@@ -179,6 +179,7 @@ The frontend includes the following main components:
 ### Pages
 - `Dashboard`: Overview of the system with summary cards
 - `Customers`: List of customers with search and filtering
+- `CustomerDetails`: Detailed view of a customer with their information, vehicles, and work orders
 - `Vehicles`: List of vehicles with search and filtering
 - `WorkOrders`: Placeholder for work orders functionality
 - `Technicians`: Placeholder for technicians functionality
@@ -293,6 +294,71 @@ The backend provides a RESTful API for managing customers, vehicles, work orders
 }
 ```
 
-### Work Order Endpoints (Coming Soon)
+### Work Order Endpoints
 
-### Technician Endpoints (Coming Soon) 
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | /api/workorders | Get all work orders |
+| GET | /api/workorders/:id | Get a single work order by ID |
+| POST | /api/workorders | Create a new work order |
+| PUT | /api/workorders/:id | Update a work order |
+| DELETE | /api/workorders/:id | Delete a work order |
+| PUT | /api/workorders/:id/status | Update a work order status |
+| PUT | /api/workorders/:id/assign | Assign a technician to a work order |
+| PUT | /api/workorders/:id/schedule | Schedule a work order |
+
+#### Work Order Object Structure
+
+```json
+{
+  "id": 1,
+  "customerId": 1,
+  "vehicleId": 2,
+  "technicianId": 3,
+  "serviceType": "replacement",
+  "glassLocation": "windshield",
+  "materialsRequired": "OEM windshield, primer, adhesive",
+  "materialsUsed": "OEM windshield, primer, adhesive",
+  "scheduledDate": "2023-03-15T10:00:00.000Z",
+  "completedDate": "2023-03-15T11:30:00.000Z",
+  "status": "completed",
+  "price": 350.00,
+  "paymentType": "insurance",
+  "paymentStatus": "paid",
+  "insuranceClaim": true,
+  "insuranceInfo": "Policy #12345, Geico",
+  "warrantyInfo": "5-year warranty on installation",
+  "notes": "Customer requested OEM glass",
+  "createdAt": "2023-03-10T00:00:00.000Z",
+  "updatedAt": "2023-03-15T11:30:00.000Z"
+}
+```
+
+### Technician Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | /api/technicians | Get all technicians |
+| GET | /api/technicians/:id | Get a single technician by ID |
+| POST | /api/technicians | Create a new technician |
+| PUT | /api/technicians/:id | Update a technician |
+| DELETE | /api/technicians/:id | Delete a technician |
+| GET | /api/technicians/:id/workorders | Get all work orders for a technician |
+| GET | /api/technicians/:id/schedule | Get the schedule for a technician |
+
+#### Technician Object Structure
+
+```json
+{
+  "id": 1,
+  "firstName": "John",
+  "lastName": "Smith",
+  "email": "john.smith@example.com",
+  "phone": "555-987-6543",
+  "skills": ["windshield replacement", "side window repair"],
+  "notes": "Certified in OEM glass installation",
+  "active": true,
+  "createdAt": "2023-01-01T00:00:00.000Z",
+  "updatedAt": "2023-01-01T00:00:00.000Z"
+}
+``` 

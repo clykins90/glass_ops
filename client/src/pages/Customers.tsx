@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { Link } from 'react-router-dom';
 import { customerApi } from '../services/api';
 
 const Customers = () => {
@@ -104,9 +105,9 @@ const Customers = () => {
                           </span>
                         </td>
                         <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
-                          <a href={`/customers/${customer.id}`} className="text-indigo-600 hover:text-indigo-900">
+                          <Link to={`/customers/${customer.id}`} className="text-indigo-600 hover:text-indigo-900">
                             View<span className="sr-only">, {customer.firstName} {customer.lastName}</span>
-                          </a>
+                          </Link>
                         </td>
                       </tr>
                     ))}
