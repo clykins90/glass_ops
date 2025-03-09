@@ -85,39 +85,6 @@ glass_agent/
 - Track technician availability
 - Manage technician workload
 
-## Data Models
-
-### Customer
-- Basic information (name, contact info, address)
-- Communication preferences
-- History of services
-- Status (lead, active, inactive)
-
-### Vehicle
-- Make, model, year
-- VIN number
-- Glass specifications
-- Insurance information
-
-### Work Order
-- Service type (replacement, repair)
-- Glass type and location
-- Materials required for service
-- Materials used during service
-- Pricing information
-- Payment details (insurance, warranty, out-of-pocket)
-- Payment status tracking
-- Status (scheduled, in progress, completed, cancelled)
-- Timeline (created, scheduled, completed dates)
-- Assigned technician
-- Customer and vehicle references
-
-### Technician
-- Personal information
-- Skills and certifications
-- Schedule and availability
-- Work history
-
 ## Getting Started
 
 ### Prerequisites
@@ -169,53 +136,18 @@ glass_agent/
    npm run dev
    ```
 
-## Frontend Components
+## Documentation
 
-The frontend includes the following main components:
+For more detailed documentation, please refer to the following files:
 
-### Layout
-- `DashboardLayout`: Main layout with sidebar navigation
-
-### Pages
-- `Dashboard`: Overview of the system with summary cards
-- `Customers`: List of customers with search and filtering
-- `CustomerDetails`: Detailed view of a customer with their information, vehicles, and work orders
-- `Vehicles`: List of vehicles with search and filtering
-- `WorkOrders`: Placeholder for work orders functionality
-- `Technicians`: Placeholder for technicians functionality
-
-### Services
-- `api.ts`: API service layer for communicating with the backend
-
-## Testing
-
-The project uses Jest for testing both the frontend and backend components.
-
-For detailed testing documentation, including setup, configuration, and testing patterns, see [TESTING.md](./TESTING.md).
-
-### Quick Start
-
-**Backend Tests:**
-```bash
-cd server
-npm test
-```
-
-**Frontend Tests:**
-```bash
-cd client
-npm test
-```
-
-**Run tests for a specific component:**
-```bash
-cd client
-npm test -- --testPathPattern=ComponentName
-```
+- [FRONTEND.md](./FRONTEND.md): Detailed documentation about the frontend implementation
+- [BACKEND.md](./BACKEND.md): Detailed documentation about the backend implementation
+- [TESTING.md](./TESTING.md): Documentation about testing strategies and patterns
+- [TODO.md](./TODO.md): Current development plan and progress
 
 ## Development Status
 
-This project is currently in the initial development phase. See [TODO.md](./TODO.md) for the current development plan and progress. 
+This project is currently in the initial development phase. See [TODO.md](./TODO.md) for the current development plan and progress.
 
 ## Version Control
 
@@ -227,139 +159,4 @@ The project uses Git for version control. The following files are excluded from 
 - **Database files**: SQLite database files (dev.db)
 - **Logs and cache files**
 
-Note that package-lock.json files and Prisma migrations should be committed to version control to ensure dependency and database consistency across environments.
-
-## API Documentation
-
-The backend provides a RESTful API for managing customers, vehicles, work orders, and technicians.
-
-### Customer Endpoints
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | /api/customers | Get all customers |
-| GET | /api/customers/:id | Get a single customer by ID |
-| POST | /api/customers | Create a new customer |
-| PUT | /api/customers/:id | Update a customer |
-| DELETE | /api/customers/:id | Delete a customer |
-| GET | /api/customers/:id/workorders | Get all work orders for a customer |
-| GET | /api/customers/:id/vehicles | Get all vehicles for a customer |
-
-#### Customer Object Structure
-
-```json
-{
-  "id": 1,
-  "firstName": "John",
-  "lastName": "Doe",
-  "email": "john.doe@example.com",
-  "phone": "555-123-4567",
-  "address": "123 Main St",
-  "city": "Anytown",
-  "state": "CA",
-  "zipCode": "12345",
-  "isLead": false,
-  "notes": "Referred by Jane Smith",
-  "source": "Website",
-  "createdAt": "2023-01-01T00:00:00.000Z",
-  "updatedAt": "2023-01-01T00:00:00.000Z"
-}
-```
-
-### Vehicle Endpoints
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | /api/vehicles | Get all vehicles |
-| GET | /api/vehicles/:id | Get a single vehicle by ID |
-| POST | /api/vehicles | Create a new vehicle |
-| PUT | /api/vehicles/:id | Update a vehicle |
-| DELETE | /api/vehicles/:id | Delete a vehicle |
-
-#### Vehicle Object Structure
-
-```json
-{
-  "id": 1,
-  "customerId": 1,
-  "make": "Toyota",
-  "model": "Camry",
-  "year": 2020,
-  "color": "Silver",
-  "vinNumber": "1HGCM82633A123456",
-  "licensePlate": "ABC123",
-  "glassType": "Laminated",
-  "notes": "Previous windshield repair in 2022",
-  "createdAt": "2023-01-01T00:00:00.000Z",
-  "updatedAt": "2023-01-01T00:00:00.000Z"
-}
-```
-
-### Work Order Endpoints
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | /api/workorders | Get all work orders |
-| GET | /api/workorders/:id | Get a single work order by ID |
-| POST | /api/workorders | Create a new work order |
-| PUT | /api/workorders/:id | Update a work order |
-| DELETE | /api/workorders/:id | Delete a work order |
-| PUT | /api/workorders/:id/status | Update a work order status |
-| PUT | /api/workorders/:id/assign | Assign a technician to a work order |
-| PUT | /api/workorders/:id/schedule | Schedule a work order |
-
-#### Work Order Object Structure
-
-```json
-{
-  "id": 1,
-  "customerId": 1,
-  "vehicleId": 2,
-  "technicianId": 3,
-  "serviceType": "replacement",
-  "glassLocation": "windshield",
-  "materialsRequired": "OEM windshield, primer, adhesive",
-  "materialsUsed": "OEM windshield, primer, adhesive",
-  "scheduledDate": "2023-03-15T10:00:00.000Z",
-  "completedDate": "2023-03-15T11:30:00.000Z",
-  "status": "completed",
-  "price": 350.00,
-  "paymentType": "insurance",
-  "paymentStatus": "paid",
-  "insuranceClaim": true,
-  "insuranceInfo": "Policy #12345, Geico",
-  "warrantyInfo": "5-year warranty on installation",
-  "notes": "Customer requested OEM glass",
-  "createdAt": "2023-03-10T00:00:00.000Z",
-  "updatedAt": "2023-03-15T11:30:00.000Z"
-}
-```
-
-### Technician Endpoints
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | /api/technicians | Get all technicians |
-| GET | /api/technicians/:id | Get a single technician by ID |
-| POST | /api/technicians | Create a new technician |
-| PUT | /api/technicians/:id | Update a technician |
-| DELETE | /api/technicians/:id | Delete a technician |
-| GET | /api/technicians/:id/workorders | Get all work orders for a technician |
-| GET | /api/technicians/:id/schedule | Get the schedule for a technician |
-
-#### Technician Object Structure
-
-```json
-{
-  "id": 1,
-  "firstName": "John",
-  "lastName": "Smith",
-  "email": "john.smith@example.com",
-  "phone": "555-987-6543",
-  "skills": ["windshield replacement", "side window repair"],
-  "notes": "Certified in OEM glass installation",
-  "active": true,
-  "createdAt": "2023-01-01T00:00:00.000Z",
-  "updatedAt": "2023-01-01T00:00:00.000Z"
-}
-``` 
+Note that package-lock.json files and Prisma migrations should be committed to version control to ensure dependency and database consistency across environments. 

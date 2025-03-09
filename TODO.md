@@ -136,9 +136,11 @@
 - [ ] Implement lead management features (skip for now)
 
 ### Vehicle Management
-- [ ] Create vehicle components for customer profiles
-- [ ] Implement vehicle add/edit forms
+- [x] Create vehicle components for customer profiles
+- [x] Implement vehicle add/edit forms
 - [x] Create vehicle list view
+- [x] Implement vehicle details view
+- [x] Create vehicle deletion confirmation
 
 ### Work Order Management
 - [ ] Create work orders list page

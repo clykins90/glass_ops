@@ -186,6 +186,76 @@ jest.mock('react-router-dom', () => ({
 }));
 ```
 
+#### Vehicle Form Tests
+
+The VehicleForm component has comprehensive tests that verify its functionality:
+
+```typescript
+// Mock the API and navigation
+jest.mock('../../../services/api', () => ({
+  vehicleApi: {
+    create: jest.fn().mockImplementation((data) => Promise.resolve(data)),
+    update: jest.fn().mockImplementation((id, data) => Promise.resolve({ id, ...data })),
+  },
+}));
+
+test('renders form with empty fields for new vehicle', () => {
+  renderWithRouter(<VehicleForm customerId={1} />);
+  
+  // Check that form fields are rendered
+  expect(screen.getByLabelText(/make/i)).toBeInTheDocument();
+  expect(screen.getByLabelText(/model/i)).toBeInTheDocument();
+  expect(screen.getByLabelText(/year/i)).toBeInTheDocument();
+  // ...
+});
+
+test('validates required fields', async () => {
+  renderWithRouter(<VehicleForm customerId={1} />);
+  
+  // Clear required fields
+  fireEvent.change(screen.getByLabelText(/make \*/i), { target: { value: '' } });
+  fireEvent.change(screen.getByLabelText(/model \*/i), { target: { value: '' } });
+  
+  // Submit the form
+  fireEvent.click(screen.getByRole('button', { name: /add vehicle/i }));
+  
+  // Check that validation errors are displayed
+  await waitFor(() => {
+    expect(screen.getByText(/make is required/i)).toBeInTheDocument();
+    expect(screen.getByText(/model is required/i)).toBeInTheDocument();
+  });
+});
+
+test('submits form for new vehicle', async () => {
+  const onSuccessMock = jest.fn();
+  (vehicleApi.create as jest.Mock).mockResolvedValue(mockVehicle);
+  
+  renderWithRouter(<VehicleForm customerId={1} onSuccess={onSuccessMock} />);
+  
+  // Fill in required fields and submit
+  fireEvent.change(screen.getByLabelText(/make \*/i), { target: { value: 'Toyota' } });
+  fireEvent.change(screen.getByLabelText(/model \*/i), { target: { value: 'Camry' } });
+  fireEvent.click(screen.getByRole('button', { name: /add vehicle/i }));
+  
+  // Verify API call and success callback
+  await waitFor(() => {
+    expect(vehicleApi.create).toHaveBeenCalledWith(expect.objectContaining({
+      customerId: 1,
+      make: 'Toyota',
+      model: 'Camry',
+    }));
+    expect(onSuccessMock).toHaveBeenCalled();
+  });
+});
+```
+
+These tests ensure that:
+1. The form renders correctly with empty fields for new vehicles
+2. The form populates with existing data when editing a vehicle
+3. Validation works for required fields
+4. Form submission correctly calls the API for both new and existing vehicles
+5. Success callbacks are triggered after successful submission
+
 #### Test Utilities
 
 ```typescript
