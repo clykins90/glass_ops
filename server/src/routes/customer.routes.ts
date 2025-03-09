@@ -1,40 +1,35 @@
 import express from 'express';
+import {
+  getAllCustomers,
+  getCustomerById,
+  createCustomer,
+  updateCustomer,
+  deleteCustomer,
+  getCustomerWorkOrders,
+  getCustomerVehicles
+} from '../controllers/customer.controller';
 
 const router = express.Router();
 
 // GET /api/customers - Get all customers
-router.get('/', (req, res) => {
-  res.status(200).json({ message: 'Fetch all customers - Endpoint not implemented yet' });
-});
+router.get('/', getAllCustomers);
 
 // GET /api/customers/:id - Get a single customer
-router.get('/:id', (req, res) => {
-  res.status(200).json({ message: `Fetch customer ${req.params.id} - Endpoint not implemented yet` });
-});
+router.get('/:id', getCustomerById);
 
 // POST /api/customers - Create a new customer
-router.post('/', (req, res) => {
-  res.status(201).json({ message: 'Create customer - Endpoint not implemented yet' });
-});
+router.post('/', createCustomer);
 
 // PUT /api/customers/:id - Update a customer
-router.put('/:id', (req, res) => {
-  res.status(200).json({ message: `Update customer ${req.params.id} - Endpoint not implemented yet` });
-});
+router.put('/:id', updateCustomer);
 
 // DELETE /api/customers/:id - Delete a customer
-router.delete('/:id', (req, res) => {
-  res.status(200).json({ message: `Delete customer ${req.params.id} - Endpoint not implemented yet` });
-});
+router.delete('/:id', deleteCustomer);
 
 // GET /api/customers/:id/workorders - Get all work orders for a customer
-router.get('/:id/workorders', (req, res) => {
-  res.status(200).json({ message: `Fetch work orders for customer ${req.params.id} - Endpoint not implemented yet` });
-});
+router.get('/:id/workorders', getCustomerWorkOrders);
 
 // GET /api/customers/:id/vehicles - Get all vehicles for a customer
-router.get('/:id/vehicles', (req, res) => {
-  res.status(200).json({ message: `Fetch vehicles for customer ${req.params.id} - Endpoint not implemented yet` });
-});
+router.get('/:id/vehicles', getCustomerVehicles);
 
 export default router; 
