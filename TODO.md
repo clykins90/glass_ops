@@ -5,41 +5,41 @@
 ### Initial Setup
 - [x] Create project README.md
 - [x] Create detailed TODO.md
-- [ ] Initialize Git repository
-- [ ] Set up project structure (client/server folders)
+- [x] Initialize Git repository
+- [x] Set up project structure (client/server folders)
 - [ ] Configure ESLint and Prettier
 - [ ] Set up GitHub repository
 
 ### Frontend Setup
-- [ ] Initialize React application with TypeScript
-- [ ] Install and configure Tailwind CSS
-- [ ] Set up shadcn/ui component library
-- [ ] Configure React Router
-- [ ] Set up React Query
+- [x] Initialize React application with TypeScript
+- [x] Install and configure Tailwind CSS
+- [x] Set up shadcn/ui component library
+- [x] Configure React Router
+- [x] Set up React Query
 - [ ] Create basic layouts and navigation structure
 - [ ] Set up state management with Context API
 - [ ] Configure API service layer
 
 ### Backend Setup
-- [ ] Initialize Node.js application with TypeScript
-- [ ] Set up Express server
-- [ ] Configure Prisma ORM
+- [x] Initialize Node.js application with TypeScript
+- [x] Set up Express server
+- [x] Configure Prisma ORM
 - [ ] Set up PostgreSQL database
 - [ ] Create database connection
-- [ ] Configure environment variables
-- [ ] Set up basic API routes
-- [ ] Configure CORS middleware
-- [ ] Set up error handling middleware
+- [x] Configure environment variables
+- [x] Set up basic API routes
+- [x] Configure CORS middleware
+- [x] Set up error handling middleware
 
 ## Database Design Tasks
 
 ### Schema Design
-- [ ] Define Customer/Lead model
-- [ ] Define Vehicle model
-- [ ] Define Work Order model
-- [ ] Define Technician model
-- [ ] Define relationships between models
-- [ ] Create initial Prisma schema
+- [x] Define Customer/Lead model
+- [x] Define Vehicle model
+- [x] Define Work Order model
+- [x] Define Technician model
+- [x] Define relationships between models
+- [x] Create initial Prisma schema
 - [ ] Set up migrations system
 - [ ] Run initial migration to create database tables
 
