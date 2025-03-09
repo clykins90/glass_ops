@@ -143,27 +143,30 @@
 - [x] Create vehicle deletion confirmation
 
 ### Work Order Management
-- [ ] Create work orders list page
-- [ ] Implement work order details view
-- [ ] Create work order add/edit forms
-- [ ] Implement work order status workflow
-- [ ] Create work order search and filtering
-- [ ] Build materials selection and tracking interface
-- [ ] Create payment type selection and status tracking UI
-- [ ] Implement warranty information management
+- [x] Create work orders list page
+- [x] Implement work order details view
+- [x] Create work order add/edit forms
+- [x] Implement work order status workflow
+- [x] Create work order search and filtering
+- [x] Build materials selection and tracking interface
+- [x] Create payment type selection and status tracking UI
+- [x] Implement warranty information management
 - [ ] Add payment summary reports
 
 ### Scheduling Interface
-- [ ] Create calendar view component
-- [ ] Implement day, week, month views
-- [ ] Create scheduling interface for work orders
-- [ ] Implement technician availability visualization
+- [x] Create calendar view component
+- [x] Implement day, week, month views
+- [x] Create scheduling interface for work orders
+- [x] Implement technician availability visualization
+- [] Create a work order view that shows unscheduled work orders and allow me to quickly schedule them
+- [] Create a technician view that shows my technicians and their work orders for the day/week 
+- [] Allow me to access the above views from the main scheduling view via tabs or some other UI element
 - [ ] Create drag-and-drop scheduling functionality
 
 ### Technician Management
-- [ ] Create technicians list page
-- [ ] Implement technician details view
-- [ ] Create technician add/edit forms
+- [x] Create technicians list page
+- [x] Implement technician details view
+- [x] Create technician add/edit forms
 - [ ] Implement workload and schedule views
 
 ### Reports and Dashboard

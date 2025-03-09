@@ -64,17 +64,26 @@ client/
 - `VehicleDetails`: Detailed view of a vehicle with its information
 - `AddVehicle`: Form for adding a new vehicle (can be accessed from customer details or vehicles list)
 - `EditVehicle`: Form for editing an existing vehicle
-- `WorkOrders`: Placeholder for work orders functionality
-- `Technicians`: Placeholder for technicians functionality
+- `WorkOrders`: List of work orders with search and filtering
+- `WorkOrderDetails`: Detailed view of a work order with its information
+- `AddWorkOrder`: Form for adding a new work order
+- `EditWorkOrder`: Form for editing an existing work order
+- `Technicians`: List of technicians with search and filtering
+- `TechnicianDetails`: Detailed view of a technician with their information and assigned work orders
+- `AddTechnician`: Form for adding a new technician
+- `EditTechnician`: Form for editing an existing technician
 
 ### Components
 - `ConfirmationDialog`: Reusable dialog for confirming actions like deletion
 - `CustomerForm`: Form component for creating and editing customers
 - `VehicleForm`: Form component for creating and editing vehicles
+- `WorkOrderForm`: Form component for creating and editing work orders
+- `TechnicianForm`: Form component for creating and editing technicians
 
 ### Context
 - `AppContext`: Application-wide context for global state
 - `VehicleContext`: Context for managing vehicle state and operations
+- `WorkOrderContext`: Context for managing work order state and operations
 
 ### Services
 - `api.ts`: API service layer for communicating with the backend
@@ -97,7 +106,7 @@ client/
 - Delete vehicles
 - View vehicle's owner and work orders
 
-### Work Order Management (Planned)
+### Work Order Management
 - View list of all work orders with search and filtering
 - View detailed work order information
 - Create new work orders
@@ -105,13 +114,18 @@ client/
 - Update work order status
 - Assign technicians to work orders
 - Schedule work orders
+- Track materials required and used
+- Manage payment information (type, status, insurance, warranty)
+- Add notes and additional information
 
-### Technician Management (Planned)
-- View list of all technicians
-- View detailed technician information
-- Add new technicians
+### Technician Management
+- View list of all technicians with active status filtering
+- View detailed technician information including skills and assigned work orders
+- Add new technicians with skills and specializations
 - Edit existing technician details
-- View technician's work orders and schedule
+- Delete technicians
+- Toggle technician active status
+- View technician's assigned work orders
 
 ## Data Models
 

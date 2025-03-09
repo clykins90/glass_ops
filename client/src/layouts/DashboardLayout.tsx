@@ -10,6 +10,7 @@ const DashboardLayout = () => {
     { path: '/customers', label: 'Customers' },
     { path: '/vehicles', label: 'Vehicles' },
     { path: '/work-orders', label: 'Work Orders' },
+    { path: '/schedule', label: 'Schedule' },
     { path: '/technicians', label: 'Technicians' }
   ];
   

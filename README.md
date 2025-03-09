@@ -68,19 +68,24 @@ glass_agent/
 - Convert leads to customers
 - Search and filter functionality
 
+### Vehicle Management
+- Create, view, edit, and delete vehicle records
+- Link vehicles to customers
+- Track vehicle information and service history
+- Search and filter functionality
+
 ### Work Order Management
-- Create work orders with service details
-- Link work orders to customers
-- Track work order status
-- Include vehicle information and service requirements
+- Create, view, edit, and delete work orders
+- Link work orders to customers and vehicles
+- Track work order status (scheduled, in-progress, completed, cancelled)
+- Assign technicians to work orders
+- Schedule service dates
+- Track materials required and used
+- Manage payment information (type, status, insurance, warranty)
+- Add notes and additional information
+- Search and filter functionality
 
-### Scheduling
-- Calendar view for scheduling work
-- Assign time slots for services
-- View daily, weekly, and monthly schedules
-- Avoid scheduling conflicts
-
-### Technician Management
+### Technician Management (In Development)
 - Assign work orders to technicians
 - Track technician availability
 - Manage technician workload
@@ -147,7 +152,15 @@ For more detailed documentation, please refer to the following files:
 
 ## Development Status
 
-This project is currently in the initial development phase. See [TODO.md](./TODO.md) for the current development plan and progress.
+This project is currently in active development. The following features are implemented:
+- Customer management (complete)
+- Vehicle management (complete)
+- Work order management (complete)
+- Technician management (in progress)
+- Scheduling interface (planned)
+- Reports and dashboard (planned)
+
+See [TODO.md](./TODO.md) for the current development plan and progress.
 
 ## Version Control
 
