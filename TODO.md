@@ -1,4 +1,4 @@
-# Auto Glass Service Management System - Development Plan
+# GlassOps - Development Plan
 
 ## Project Setup Tasks
 
@@ -162,7 +162,7 @@
 - [x] Create a work order view that shows unscheduled work orders and allow me to quickly schedule them
 - [x] Create a technician view that shows my technicians and their work orders for the day/week 
 - [x] Allow me to access the above views from the main scheduling view via tabs or some other UI element
-- [ ] Create drag-and-drop scheduling functionality
+- [ ] Create drag-and-drop scheduling functionality (TBD)
 
 ### Technician Management
 - [x] Create technicians list page
@@ -171,10 +171,10 @@
 - [x] Implement workload and schedule views
 
 ### Reports and Dashboard
-- [ ] Create dashboard overview page
-- [ ] Implement performance metrics charts
-- [ ] Create scheduled work orders summary
-- [ ] Implement technician workload visualization
+- [x] Create dashboard overview page
+- [x] Implement performance metrics charts
+- [x] Create scheduled work orders summary
+- [x] Implement technician workload visualization
 
 ## Data Model Details
 
@@ -285,6 +285,11 @@ model Technician {
 - [ ] Create component tests
 - [ ] Set up end-to-end testing
 - [ ] Implement CI/CD pipeline
+
+## Bug Fixes
+- [x] Fix dashboard API endpoint not registered in server/src/index.ts
+- [x] Fix BigInt serialization error in dashboard metrics API
+- [x] Rename application from "Auto Glass Service" to "GlassOps"
 
 ## Deployment Preparation Tasks (Future)
 - [ ] Set up production build process

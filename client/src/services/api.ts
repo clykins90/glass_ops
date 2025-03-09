@@ -85,4 +85,17 @@ export const technicianApi = {
   delete: (id: number) => fetchApi<any>(`/technicians/${id}`, {
     method: 'DELETE',
   }),
+};
+
+// Dashboard API
+export const dashboardApi = {
+  getMetrics: () => fetchApi<{
+    totalCustomers: number;
+    activeWorkOrders: number;
+    scheduledToday: number;
+    recentWorkOrders: any[];
+    workOrdersByStatus: any[];
+    workOrdersByServiceType: any[];
+    technicianWorkload: any[];
+  }>('/dashboard/metrics'),
 }; 

@@ -1,6 +1,6 @@
-# Auto Glass Service Management System - Frontend
+# GlassOps - Frontend
 
-This document provides detailed information about the frontend implementation of the Auto Glass Service Management System.
+This document provides detailed information about the frontend implementation of GlassOps.
 
 ## Technology Stack
 
@@ -70,7 +70,12 @@ These components are located in `src/components/ui/` and are imported throughout
 - `DashboardLayout`: Main layout with sidebar navigation
 
 ### Pages
-- `Dashboard`: Overview of the system with summary cards
+- `Dashboard`: Overview of the system with summary cards, performance metrics charts, scheduled work orders summary, and technician workload visualization. Features include:
+  - Real-time metrics for total customers, active work orders, and scheduled appointments
+  - Work orders by status chart (bar chart)
+  - Work orders by service type chart (pie chart)
+  - Technician workload visualization with progress bars
+  - Recent work orders list with status indicators
 - `Customers`: List of customers with search and filtering
 - `CustomerDetails`: Detailed view of a customer with their information, vehicles, and work orders
 - `CustomerAdd`: Form for adding a new customer
@@ -142,6 +147,13 @@ These components are located in `src/components/ui/` and are imported throughout
 - Toggle technician active status
 - View technician's assigned work orders
 
+### Dashboard and Reporting
+- Overview dashboard with key metrics
+- Work orders by status visualization
+- Work orders by service type breakdown
+- Technician workload monitoring
+- Recent activity tracking
+
 ## Data Models
 
 ### Customer
@@ -193,4 +205,4 @@ npm test
 ```bash
 cd client
 npm test -- --testPathPattern=ComponentName
-``` 
+```

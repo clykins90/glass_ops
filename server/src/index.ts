@@ -10,6 +10,7 @@ import customerRoutes from './routes/customer.routes';
 import vehicleRoutes from './routes/vehicle.routes';
 import workOrderRoutes from './routes/workOrder.routes';
 import technicianRoutes from './routes/technician.routes';
+import dashboardRoutes from './routes/dashboard.routes';
 
 // Load environment variables
 dotenv.config();
@@ -37,6 +38,7 @@ app.use(`${apiPrefix}/customers`, customerRoutes);
 app.use(`${apiPrefix}/vehicles`, vehicleRoutes);
 app.use(`${apiPrefix}/workorders`, workOrderRoutes);
 app.use(`${apiPrefix}/technicians`, technicianRoutes);
+app.use(`${apiPrefix}/dashboard`, dashboardRoutes);
 
 // Health check route
 app.get('/health', (req, res) => {

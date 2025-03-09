@@ -1,6 +1,6 @@
-# Auto Glass Service Management System - Backend
+# GlassOps - Backend
 
-This document provides detailed information about the backend implementation of the Auto Glass Service Management System.
+This document provides detailed information about the backend implementation of GlassOps.
 
 ## Technology Stack
 
@@ -164,6 +164,43 @@ model Technician {
 }
 ```
 
+## Features
+
+### Customer Management
+- CRUD operations for customer records
+- Lead tracking and conversion
+- Customer history and notes
+- Vehicle association
+
+### Vehicle Management
+- CRUD operations for vehicle records
+- Vehicle details and specifications
+- Customer association
+- Work order history
+
+### Work Order Management
+- CRUD operations for work orders
+- Status tracking (scheduled, in-progress, completed, cancelled)
+- Technician assignment
+- Scheduling functionality
+- Materials tracking
+- Payment and insurance information
+- Warranty management
+
+### Technician Management
+- CRUD operations for technician records
+- Skills and specialization tracking
+- Availability and scheduling
+- Work order assignment
+- Performance metrics
+
+### Dashboard and Reporting
+- Real-time metrics and statistics
+- Work order status breakdown
+- Service type distribution
+- Technician workload analysis
+- Recent activity tracking
+
 ## API Documentation
 
 The backend provides a RESTful API for managing customers, vehicles, work orders, and technicians.
@@ -282,7 +319,7 @@ The backend provides a RESTful API for managing customers, vehicles, work orders
 | GET | /api/technicians/:id/workorders | Get all work orders for a technician |
 | GET | /api/technicians/:id/schedule | Get the schedule for a technician |
 
-#### Technician Object Structure
+#### Technician Object
 
 ```json
 {
@@ -290,14 +327,193 @@ The backend provides a RESTful API for managing customers, vehicles, work orders
   "firstName": "John",
   "lastName": "Smith",
   "email": "john.smith@example.com",
-  "phone": "555-987-6543",
-  "skills": ["windshield replacement", "side window repair"],
-  "notes": "Certified in OEM glass installation",
+  "phone": "555-123-4567",
+  "skills": ["windshield replacement", "window repair"],
+  "notes": "Certified in all types of auto glass repair",
   "active": true,
-  "createdAt": "2023-01-01T00:00:00.000Z",
-  "updatedAt": "2023-01-01T00:00:00.000Z"
+  "createdAt": "2023-01-15T08:30:00.000Z",
+  "updatedAt": "2023-01-15T08:30:00.000Z"
 }
 ```
+
+### Dashboard Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | /api/dashboard/metrics | Get dashboard metrics and statistics |
+
+#### Dashboard Metrics Response
+
+```json
+{
+  "totalCustomers": 25,
+  "activeWorkOrders": 10,
+  "scheduledToday": 5,
+  "recentWorkOrders": [
+    {
+      "id": 1,
+      "status": "scheduled",
+      "serviceType": "replacement",
+      "scheduledDate": "2023-06-15T10:00:00.000Z",
+      "customer": {
+        "firstName": "John",
+        "lastName": "Doe"
+      },
+      "vehicle": {
+        "make": "Toyota",
+        "model": "Camry"
+      },
+      "technician": {
+        "firstName": "Mike",
+        "lastName": "Smith"
+      }
+    }
+  ],
+  "workOrdersByStatus": [
+    { "status": "scheduled", "count": 5 },
+    { "status": "in-progress", "count": 3 },
+    { "status": "completed", "count": 12 }
+  ],
+  "workOrdersByServiceType": [
+    { "serviceType": "replacement", "count": 15 },
+    { "serviceType": "repair", "count": 5 }
+  ],
+  "technicianWorkload": [
+    {
+      "id": 1,
+      "firstName": "Mike",
+      "lastName": "Smith",
+      "_count": {
+        "workOrders": 5
+      }
+    }
+  ]
+}
+```
+
+## Implementation Details
+
+### Routes
+
+The application uses Express Router to organize routes by resource:
+
+- `customer.routes.ts`: Endpoints for customer management
+- `vehicle.routes.ts`: Endpoints for vehicle management
+- `workOrder.routes.ts`: Endpoints for work order management
+- `technician.routes.ts`: Endpoints for technician management
+- `dashboard.routes.ts`: Endpoints for dashboard metrics and statistics
+
+### Controllers
+
+Controllers handle the request/response cycle and delegate business logic to services:
+
+- `customer.controller.ts`: Customer-related operations
+- `vehicle.controller.ts`: Vehicle-related operations
+- `workOrder.controller.ts`: Work order-related operations
+- `technician.controller.ts`: Technician-related operations
+
+### Database
+
+The application uses Prisma as the ORM to interact with the PostgreSQL database.
+
+### Dashboard Implementation
+
+The dashboard metrics endpoint (`GET /api/dashboard/metrics`) provides a comprehensive overview of the system's current state. It aggregates data from multiple tables to generate real-time statistics and visualizations.
+
+#### Metrics Calculation
+
+1. **Total Customers**: Simple count of all customer records
+   ```typescript
+   const totalCustomers = await prisma.customer.count();
+   ```
+
+2. **Active Work Orders**: Count of work orders that are not completed or cancelled
+   ```typescript
+   const activeWorkOrders = await prisma.workOrder.count({
+     where: {
+       status: {
+         notIn: ['completed', 'cancelled']
+       }
+     }
+   });
+   ```
+
+3. **Scheduled Today**: Count of work orders scheduled for the current day
+   ```typescript
+   const today = new Date();
+   today.setHours(0, 0, 0, 0);
+   const tomorrow = new Date(today);
+   tomorrow.setDate(tomorrow.getDate() + 1);
+   
+   const scheduledToday = await prisma.workOrder.count({
+     where: {
+       scheduledDate: {
+         gte: today,
+         lt: tomorrow
+       }
+     }
+   });
+   ```
+
+4. **Recent Work Orders**: Latest 5 work orders with related customer, vehicle, and technician data
+   ```typescript
+   const recentWorkOrders = await prisma.workOrder.findMany({
+     take: 5,
+     orderBy: {
+       updatedAt: 'desc'
+     },
+     include: {
+       customer: true,
+       vehicle: true,
+       technician: true
+     }
+   });
+   ```
+
+5. **Work Orders by Status**: Aggregation of work orders grouped by status
+   ```typescript
+   const workOrdersByStatus = await prisma.$queryRaw`
+     SELECT status, COUNT(*) as count 
+     FROM "WorkOrder" 
+     GROUP BY status
+   `;
+   ```
+
+6. **Work Orders by Service Type**: Aggregation of work orders grouped by service type
+   ```typescript
+   const workOrdersByServiceType = await prisma.$queryRaw`
+     SELECT "serviceType", COUNT(*) as count 
+     FROM "WorkOrder" 
+     GROUP BY "serviceType"
+   `;
+   ```
+
+7. **Technician Workload**: Count of active work orders assigned to each technician
+   ```typescript
+   const technicianWorkload = await prisma.technician.findMany({
+     where: {
+       active: true
+     },
+     select: {
+       id: true,
+       firstName: true,
+       lastName: true,
+       _count: {
+         select: {
+           workOrders: {
+             where: {
+               status: {
+                 notIn: ['completed', 'cancelled']
+               }
+             }
+           }
+         }
+       }
+     }
+   });
+   ```
+
+This implementation leverages Prisma's powerful query capabilities to efficiently aggregate data from multiple tables without requiring complex joins or multiple database calls.
 
 ## Testing
 

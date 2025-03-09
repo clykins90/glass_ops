@@ -1,4 +1,4 @@
-# Auto Glass Service Management System
+# GlassOps
 
 A comprehensive management system for auto glass replacement and repair services.
 

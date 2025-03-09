@@ -1,6 +1,6 @@
 # Testing Documentation
 
-This document provides detailed information about the testing setup and strategies used in the Auto Glass Service Management System.
+This document provides detailed information about the testing setup and strategies used in GlassOps.
 
 ## Frontend Testing
 
@@ -287,6 +287,82 @@ const renderWithProviders = (ui: React.ReactElement) => {
   );
 };
 ```
+
+### Component Tests
+
+#### Dashboard Component
+
+The Dashboard component tests verify that:
+
+1. The component shows loading states initially
+2. The component correctly displays metrics after data is loaded
+3. The component handles API errors appropriately
+
+```typescript
+// Dashboard.test.tsx
+describe('Dashboard Component', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  test('renders loading state initially', () => {
+    (dashboardApi.getMetrics as jest.Mock).mockResolvedValue(mockDashboardData);
+    
+    render(
+      <BrowserRouter>
+        <Dashboard />
+      </BrowserRouter>
+    );
+    
+    // Check for loading indicators
+    expect(screen.getAllByTestId('skeleton')).toHaveLength(3);
+  });
+
+  test('renders dashboard metrics after loading', async () => {
+    (dashboardApi.getMetrics as jest.Mock).mockResolvedValue(mockDashboardData);
+    
+    render(
+      <BrowserRouter>
+        <Dashboard />
+      </BrowserRouter>
+    );
+    
+    // Wait for data to load
+    await waitFor(() => {
+      expect(screen.getByText('25')).toBeInTheDocument(); // Total customers
+      expect(screen.getByText('10')).toBeInTheDocument(); // Active work orders
+      expect(screen.getByText('5')).toBeInTheDocument(); // Scheduled today
+    });
+    
+    // Check for recent work order
+    expect(screen.getByText('John Doe')).toBeInTheDocument();
+    
+    // Check for technician workload
+    expect(screen.getByText('Mike Smith')).toBeInTheDocument();
+  });
+
+  test('renders error message when API fails', async () => {
+    (dashboardApi.getMetrics as jest.Mock).mockRejectedValue(new Error('API error'));
+    
+    render(
+      <BrowserRouter>
+        <Dashboard />
+      </BrowserRouter>
+    );
+    
+    // Wait for error message
+    await waitFor(() => {
+      expect(screen.getByText(/Failed to load dashboard data/)).toBeInTheDocument();
+    });
+  });
+});
+```
+
+The tests mock the API service to simulate different scenarios:
+- Successful data loading
+- API errors
+
+We also mock the chart components from recharts to avoid rendering issues in the test environment.
 
 ### Running Tests
 

@@ -1,7 +1,7 @@
 {
-  "name": "glass-agent-server",
+  "name": "glassops-server",
   "version": "0.1.0",
-  "description": "Auto Glass Service Management System - Backend",
+  "description": "GlassOps - Backend",
   "main": "dist/index.js",
   "scripts": {
     "start": "node dist/index.js",
