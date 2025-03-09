@@ -53,7 +53,7 @@
 - [x] Create DELETE /customers/:id endpoint to remove customer
 - [x] Create GET /customers/:id/workorders endpoint to fetch customer work orders
 - [x] Create GET /customers/:id/vehicles endpoint to fetch customer vehicles
-- [ ] Create endpoints for lead management and conversion
+- [ ] Create endpoints for lead management and conversion (skip this for now)
 
 ### Vehicle Endpoints
 - [x] Create GET /vehicles endpoint to fetch all vehicles
@@ -61,7 +61,7 @@
 - [x] Create POST /vehicles endpoint to create new vehicle
 - [x] Create PUT /vehicles/:id endpoint to update vehicle
 - [x] Create DELETE /vehicles/:id endpoint to remove vehicle
-- [ ] Create GET /customers/:id/vehicles endpoint to fetch customer vehicles
+- [x] Create GET /customers/:id/vehicles endpoint to fetch customer vehicles
 
 ### Work Order Endpoints
 - [x] Create GET /workorders endpoint to fetch all work orders
@@ -88,15 +88,15 @@
 - [x] Create endpoints for scheduling and filtering
   - [x] Define routes
   - [x] Create controller functions
-- [ ] Implement materials tracking functionality
-  - [ ] Define data structure
-  - [ ] Create API endpoints
-- [ ] Add payment type and status management
-  - [ ] Define data structure
-  - [ ] Create API endpoints
-- [ ] Create endpoints for warranty information
-  - [ ] Define data structure
-  - [ ] Create API endpoints
+- [x] Implement materials tracking functionality
+  - [x] Define data structure
+  - [x] Create API endpoints
+- [x] Add payment type and status management
+  - [x] Define data structure
+  - [x] Create API endpoints
+- [x] Create endpoints for warranty information
+  - [x] Define data structure
+  - [x] Create API endpoints
 
 ### Technician Endpoints
 - [x] Create GET /technicians endpoint to fetch all technicians
@@ -131,10 +131,9 @@
 ### Customer Management
 - [x] Create customers list page
 - [x] Implement customer details view
-- [ ] Create customer add/edit forms
-- [x] Implement customer search and filtering
-- [ ] Create customer deletion confirmation
-- [ ] Implement lead management features
+- [x] Create customer add/edit forms
+- [x] Create customer deletion confirmation
+- [ ] Implement lead management features (skip for now)
 
 ### Vehicle Management
 - [ ] Create vehicle components for customer profiles

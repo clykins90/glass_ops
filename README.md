@@ -191,26 +191,27 @@ The frontend includes the following main components:
 
 The project uses Jest for testing both the frontend and backend components.
 
-### Backend Testing
+For detailed testing documentation, including setup, configuration, and testing patterns, see [TESTING.md](./TESTING.md).
 
-To run backend tests:
+### Quick Start
 
+**Backend Tests:**
 ```bash
 cd server
 npm test
 ```
 
-The backend tests include:
-- Unit tests for controllers
-- API endpoint tests
-- Database integration tests
+**Frontend Tests:**
+```bash
+cd client
+npm test
+```
 
-### Frontend Testing (Coming Soon)
-
-Frontend testing will include:
-- Component tests
-- Integration tests
-- End-to-end tests
+**Run tests for a specific component:**
+```bash
+cd client
+npm test -- --testPathPattern=ComponentName
+```
 
 ## Development Status
 

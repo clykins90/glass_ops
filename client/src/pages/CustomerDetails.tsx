@@ -1,12 +1,26 @@
-import React from 'react';
+import { useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { customerApi } from '../services/api';
+import ConfirmationDialog from '../components/ConfirmationDialog';
 
 const CustomerDetails = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const customerId = parseInt(id || '0', 10);
+  const queryClient = useQueryClient();
+  
+  // State for delete confirmation dialog
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+
+  // Delete customer mutation
+  const deleteCustomerMutation = useMutation({
+    mutationFn: () => customerApi.delete(customerId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['customers'] });
+      navigate('/customers');
+    }
+  });
 
   // Fetch customer details
   const { 
@@ -97,6 +111,13 @@ const CustomerDetails = () => {
             className="inline-flex items-center rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
           >
             Edit Customer
+          </button>
+          <button
+            type="button"
+            onClick={() => setIsDeleteDialogOpen(true)}
+            className="inline-flex items-center rounded-md border border-transparent bg-red-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+          >
+            Delete Customer
           </button>
         </div>
       </div>
@@ -325,6 +346,18 @@ const CustomerDetails = () => {
           </div>
         )}
       </div>
+
+      {/* Delete confirmation dialog */}
+      <ConfirmationDialog
+        isOpen={isDeleteDialogOpen}
+        title="Delete Customer"
+        message={`Are you sure you want to delete ${customer.firstName} ${customer.lastName}? This action cannot be undone.`}
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        onConfirm={() => deleteCustomerMutation.mutate()}
+        onCancel={() => setIsDeleteDialogOpen(false)}
+        isLoading={deleteCustomerMutation.isLoading}
+      />
     </div>
   );
 };
