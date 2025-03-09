@@ -1,0 +1,94 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Customer {
+  id          Int       @id @default(autoincrement())
+  firstName   String
+  lastName    String
+  email       String?
+  phone       String
+  address     String?
+  city        String?
+  state       String?
+  zipCode     String?
+  isLead      Boolean   @default(true)
+  notes       String?
+  source      String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  vehicles    Vehicle[]
+  workOrders  WorkOrder[]
+}
+
+model Vehicle {
+  id          Int       @id @default(autoincrement())
+  customerId  Int
+  customer    Customer  @relation(fields: [customerId], references: [id])
+  make        String
+  model       String
+  year        Int
+  color       String?
+  vinNumber   String?
+  licensePlate String?
+  glassType   String?
+  notes       String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  workOrders  WorkOrder[]
+}
+
+model WorkOrder {
+  id            Int       @id @default(autoincrement())
+  customerId    Int
+  customer      Customer  @relation(fields: [customerId], references: [id])
+  vehicleId     Int?
+  vehicle       Vehicle?  @relation(fields: [vehicleId], references: [id])
+  technicianId  Int?
+  technician    Technician? @relation(fields: [technicianId], references: [id])
+  serviceType   String    // replacement, repair
+  glassLocation String    // windshield, driver window, etc.
+  
+  // Materials tracking
+  materialsRequired String?   // JSON array or comma-separated list of materials
+  materialsUsed     String?   // What was actually used during service
+  
+  // Scheduling
+  scheduledDate DateTime?
+  completedDate DateTime?
+  status        String    // scheduled, in-progress, completed, cancelled
+  
+  // Financial information
+  price         Float?
+  paymentType   String?   // insurance, warranty, out-of-pocket
+  paymentStatus String?   // pending, paid, partially paid
+  insuranceClaim Boolean  @default(false)
+  insuranceInfo String?   // Could be JSON with policy number, company, etc.
+  warrantyInfo  String?   // Details about warranty coverage if applicable
+  
+  notes         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Technician {
+  id          Int       @id @default(autoincrement())
+  firstName   String
+  lastName    String
+  email       String?
+  phone       String
+  skills      String[]
+  notes       String?
+  active      Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  workOrders  WorkOrder[]
+} 
