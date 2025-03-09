@@ -270,7 +270,9 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
                   type="date"
                   id="scheduledDate"
                   name="scheduledDate"
-                  value={formData.scheduledDate || ''}
+                  value={formData.scheduledDate instanceof Date 
+                    ? formData.scheduledDate.toISOString().split('T')[0] 
+                    : formData.scheduledDate || ''}
                   onChange={handleChange}
                   className="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
                 />
@@ -287,7 +289,9 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
                   type="date"
                   id="completedDate"
                   name="completedDate"
-                  value={formData.completedDate || ''}
+                  value={formData.completedDate instanceof Date 
+                    ? formData.completedDate.toISOString().split('T')[0] 
+                    : formData.completedDate || ''}
                   onChange={handleChange}
                   className="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
                 />

@@ -67,9 +67,9 @@ const WorkOrders = () => {
   };
 
   // Format date for display
-  const formatDate = (dateString?: string) => {
-    if (!dateString) return 'Not scheduled';
-    return new Date(dateString).toLocaleDateString();
+  const formatDate = (dateInput?: string | Date) => {
+    if (!dateInput) return 'Not scheduled';
+    return new Date(dateInput).toLocaleDateString();
   };
 
   return (

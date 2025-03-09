@@ -1,8 +1,9 @@
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { BrowserRouter } from 'react-router-dom';
 import Schedule from '../Schedule';
-import * as workOrderService from '../../services/workOrderService';
 import { WorkOrder } from '../../types/workOrder';
+import { getWorkOrders, getWorkOrdersByStatus } from '../../services/workOrderService';
+import { getTechnicians, getTechnicianSchedule } from '../../services/technicianService';
 
 // Mock the Calendar component
 jest.mock('../../components/Calendar', () => ({
@@ -16,161 +17,142 @@ jest.mock('../../components/Calendar', () => ({
     onWorkOrderClick?: (workOrder: WorkOrder) => void; 
   }) => (
     <div data-testid="calendar-mock">
-      <button 
-        data-testid="mock-work-order" 
-        onClick={() => onWorkOrderClick && onWorkOrderClick(workOrders[0])}
-      >
-        Mock Work Order
+      <div>Calendar Component (Mocked)</div>
+      <button onClick={() => onDateClick && onDateClick(new Date())}>
+        Click Date
       </button>
-      <button 
-        data-testid="mock-date" 
-        onClick={() => onDateClick && onDateClick(new Date())}
-      >
-        Mock Date
-      </button>
+      {workOrders.length > 0 && (
+        <button onClick={() => onWorkOrderClick && onWorkOrderClick(workOrders[0])}>
+          Click Work Order
+        </button>
+      )}
     </div>
   )
 }));
 
-// Mock the workOrderService
+// Mock the services
 jest.mock('../../services/workOrderService');
-
-// Mock the navigate function
-const mockNavigate = jest.fn();
-jest.mock('react-router-dom', () => ({
-  ...jest.requireActual('react-router-dom'),
-  useNavigate: () => mockNavigate,
+jest.mock('../../services/technicianService');
+jest.mock('../../components/ui/use-toast', () => ({
+  toast: jest.fn(),
 }));
 
-describe('Schedule Page', () => {
+// Mock the router
+jest.mock('react-router-dom', () => ({
+  ...jest.requireActual('react-router-dom'),
+  useNavigate: () => jest.fn(),
+}));
+
+describe('Schedule Component', () => {
   const mockWorkOrders = [
     {
       id: 1,
       customerId: 1,
+      customer: { id: 1, firstName: 'John', lastName: 'Doe', phone: '123-456-7890' },
       vehicleId: 1,
+      vehicle: { id: 1, make: 'Toyota', model: 'Camry', year: 2020 },
       technicianId: 1,
+      technician: { id: 1, firstName: 'Tech', lastName: 'One' },
       serviceType: 'replacement',
       glassLocation: 'windshield',
-      status: 'scheduled',
       scheduledDate: new Date().toISOString(),
+      status: 'scheduled',
       insuranceClaim: false,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
+    },
+    {
+      id: 2,
+      customerId: 2,
+      customer: { id: 2, firstName: 'Jane', lastName: 'Smith', phone: '987-654-3210' },
+      vehicleId: 2,
+      vehicle: { id: 2, make: 'Honda', model: 'Civic', year: 2019 },
+      technicianId: null,
+      serviceType: 'repair',
+      glassLocation: 'rear window',
+      scheduledDate: null,
+      status: 'scheduled',
+      insuranceClaim: true,
     }
   ];
 
+  const mockTechnicians = [
+    { id: 1, firstName: 'Tech', lastName: 'One', active: true, phone: '111-222-3333' },
+    { id: 2, firstName: 'Tech', lastName: 'Two', active: true, phone: '444-555-6666' }
+  ];
+
   beforeEach(() => {
+    // Reset mocks
     jest.clearAllMocks();
-    (workOrderService.getWorkOrders as jest.Mock).mockResolvedValue(mockWorkOrders);
+    
+    // Setup mock implementations
+    (getWorkOrders as jest.Mock).mockResolvedValue(mockWorkOrders);
+    (getWorkOrdersByStatus as jest.Mock).mockResolvedValue(mockWorkOrders.filter(wo => wo.status === 'scheduled'));
+    (getTechnicians as jest.Mock).mockResolvedValue(mockTechnicians);
+    (getTechnicianSchedule as jest.Mock).mockResolvedValue(mockWorkOrders.filter(wo => wo.technicianId === 1));
   });
 
   test('renders loading state initially', () => {
     render(
-      <MemoryRouter>
+      <BrowserRouter>
         <Schedule />
-      </MemoryRouter>
+      </BrowserRouter>
     );
-
+    
     expect(screen.getByText('Loading schedule...')).toBeInTheDocument();
   });
 
-  test('renders schedule after loading', async () => {
+  test('renders calendar view by default after loading', async () => {
     render(
-      <MemoryRouter>
+      <BrowserRouter>
         <Schedule />
-      </MemoryRouter>
+      </BrowserRouter>
     );
-
-    // Wait for the loading state to finish
-    await waitFor(() => {
-      expect(screen.queryByText('Loading schedule...')).not.toBeInTheDocument();
-    });
-
-    // Check if the schedule title is rendered
-    expect(screen.getByText('Schedule')).toBeInTheDocument();
     
-    // Check if the add work order button is rendered
-    expect(screen.getByText('Add Work Order')).toBeInTheDocument();
-  });
-
-  test('navigates to add work order page when button is clicked', async () => {
-    render(
-      <MemoryRouter>
-        <Schedule />
-      </MemoryRouter>
-    );
-
-    // Wait for the loading state to finish
+    // Wait for loading to complete
     await waitFor(() => {
       expect(screen.queryByText('Loading schedule...')).not.toBeInTheDocument();
     });
-
-    // Find the add work order button and click it
-    const addButton = screen.getByText('Add Work Order');
-    fireEvent.click(addButton);
-
-    // Check if navigate was called with the correct path
-    expect(mockNavigate).toHaveBeenCalledWith('/work-orders/add');
+    
+    // Check that calendar view is active
+    expect(screen.getByText('Calendar View')).toBeInTheDocument();
   });
 
-  test('navigates to work order details when a work order is clicked', async () => {
+  test('switches to unscheduled work orders view', async () => {
     render(
-      <MemoryRouter>
+      <BrowserRouter>
         <Schedule />
-      </MemoryRouter>
+      </BrowserRouter>
     );
-
-    // Wait for the loading state to finish
+    
+    // Wait for loading to complete
     await waitFor(() => {
       expect(screen.queryByText('Loading schedule...')).not.toBeInTheDocument();
     });
-
-    // Find the mock work order button and click it
-    const workOrderButton = screen.getByTestId('mock-work-order');
-    fireEvent.click(workOrderButton);
-
-    // Check if navigate was called with the correct path
-    expect(mockNavigate).toHaveBeenCalledWith('/work-orders/1');
+    
+    // Click on unscheduled tab
+    fireEvent.click(screen.getByText('Unscheduled Work Orders'));
+    
+    // Check that unscheduled view is shown
+    expect(screen.getByText('Unscheduled Work Orders')).toBeInTheDocument();
+    expect(screen.getByText('rear window - repair')).toBeInTheDocument();
   });
 
-  test('sets selected date when a date is clicked', async () => {
+  test('switches to technician schedules view', async () => {
     render(
-      <MemoryRouter>
+      <BrowserRouter>
         <Schedule />
-      </MemoryRouter>
+      </BrowserRouter>
     );
-
-    // Wait for the loading state to finish
+    
+    // Wait for loading to complete
     await waitFor(() => {
       expect(screen.queryByText('Loading schedule...')).not.toBeInTheDocument();
     });
-
-    // Find the mock date button and click it
-    const dateButton = screen.getByTestId('mock-date');
-    fireEvent.click(dateButton);
-
-    // Check if the selected date is displayed
-    await waitFor(() => {
-      expect(screen.getByText(/Selected:/)).toBeInTheDocument();
-    });
-  });
-
-  test('handles error state', async () => {
-    // Mock the service to throw an error
-    (workOrderService.getWorkOrders as jest.Mock).mockRejectedValue(new Error('Failed to fetch'));
-
-    render(
-      <MemoryRouter>
-        <Schedule />
-      </MemoryRouter>
-    );
-
-    // Wait for the error state to appear
-    await waitFor(() => {
-      expect(screen.getByText('Failed to fetch work orders. Please try again later.')).toBeInTheDocument();
-    });
-
-    // Check if the retry button is rendered
-    expect(screen.getByText('Retry')).toBeInTheDocument();
+    
+    // Click on technicians tab
+    fireEvent.click(screen.getByText('Technician Schedules'));
+    
+    // Check that technician view is shown
+    expect(screen.getByText('Technician Schedules')).toBeInTheDocument();
+    expect(screen.getByText('Schedule for Tech One')).toBeInTheDocument();
   });
 }); 

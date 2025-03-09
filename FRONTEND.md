@@ -20,6 +20,7 @@ client/
 └── src/
     ├── assets/           # Images, icons, etc.
     ├── components/       # Reusable UI components
+    │   └── ui/           # shadcn/ui components
     ├── context/          # React context providers
     ├── hooks/            # Custom React hooks
     ├── layouts/          # Page layout components
@@ -28,6 +29,20 @@ client/
     ├── services/         # API services
     └── types/            # TypeScript type definitions
 ```
+
+## UI Components
+
+The application uses shadcn/ui components, which are built on top of Radix UI primitives. These components are customizable, accessible, and follow modern design principles.
+
+Key UI components include:
+- Button - Basic button component with various styles
+- Card - Container component for displaying content in a card format
+- Tabs - Component for creating tabbed interfaces
+- Badge - Small status indicators
+- Select - Dropdown selection component
+- Toast - Notification system for user feedback
+
+These components are located in `src/components/ui/` and are imported throughout the application.
 
 ## Getting Started
 

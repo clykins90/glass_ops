@@ -19,6 +19,7 @@
 - [x] Create basic layouts and navigation structure
 - [x] Set up state management with Context API
 - [x] Configure API service layer
+- [x] Create missing UI components (tabs, badge, select, toast)
 
 ### Backend Setup
 - [x] Initialize Node.js application with TypeScript
@@ -158,16 +159,16 @@
 - [x] Implement day, week, month views
 - [x] Create scheduling interface for work orders
 - [x] Implement technician availability visualization
-- [] Create a work order view that shows unscheduled work orders and allow me to quickly schedule them
-- [] Create a technician view that shows my technicians and their work orders for the day/week 
-- [] Allow me to access the above views from the main scheduling view via tabs or some other UI element
+- [x] Create a work order view that shows unscheduled work orders and allow me to quickly schedule them
+- [x] Create a technician view that shows my technicians and their work orders for the day/week 
+- [x] Allow me to access the above views from the main scheduling view via tabs or some other UI element
 - [ ] Create drag-and-drop scheduling functionality
 
 ### Technician Management
 - [x] Create technicians list page
 - [x] Implement technician details view
 - [x] Create technician add/edit forms
-- [ ] Implement workload and schedule views
+- [x] Implement workload and schedule views
 
 ### Reports and Dashboard
 - [ ] Create dashboard overview page
