@@ -12,6 +12,7 @@ const CustomerDetails = () => {
   
   // State for delete confirmation dialog
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   // Delete customer mutation
   const deleteCustomerMutation = useMutation({
@@ -19,6 +20,11 @@ const CustomerDetails = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['customers'] });
       navigate('/customers');
+    },
+    onError: (error: any) => {
+      console.error('Error deleting customer:', error);
+      setDeleteError(error.message || 'Failed to delete customer');
+      // Keep dialog open to show error
     }
   });
 
@@ -351,11 +357,24 @@ const CustomerDetails = () => {
       <ConfirmationDialog
         isOpen={isDeleteDialogOpen}
         title="Delete Customer"
-        message={`Are you sure you want to delete ${customer.firstName} ${customer.lastName}? This action cannot be undone.`}
-        confirmLabel="Delete"
-        cancelLabel="Cancel"
-        onConfirm={() => deleteCustomerMutation.mutate()}
-        onCancel={() => setIsDeleteDialogOpen(false)}
+        message={
+          deleteError
+            ? `Error: ${deleteError}`
+            : `Are you sure you want to delete ${customer.firstName} ${customer.lastName}? This action cannot be undone.`
+        }
+        confirmLabel={deleteError ? "Try Again" : "Delete"}
+        cancelLabel={deleteError ? "Close" : "Cancel"}
+        onConfirm={() => {
+          if (deleteError) {
+            // Reset error and try again
+            setDeleteError(null);
+          }
+          deleteCustomerMutation.mutate();
+        }}
+        onCancel={() => {
+          setIsDeleteDialogOpen(false);
+          setDeleteError(null); // Clear any errors when closing
+        }}
         isLoading={deleteCustomerMutation.isLoading}
       />
     </div>

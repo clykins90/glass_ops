@@ -1,20 +1,30 @@
-const API_URL = 'http://localhost:3001/api';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
 // Generic fetch function with error handling
 async function fetchApi<T>(endpoint: string, options?: RequestInit): Promise<T> {
-  const response = await fetch(`${API_URL}${endpoint}`, {
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    ...options,
-  });
+  console.log(`API Request: ${endpoint}`);
+  try {
+    const response = await fetch(`${API_URL}${endpoint}`, {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      credentials: 'include',
+      ...options,
+    });
 
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({}));
-    throw new Error(error.message || `API error: ${response.status}`);
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      console.error(`API Error (${endpoint}):`, error);
+      throw new Error(error.message || `API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    console.log(`API Response (${endpoint}):`, data);
+    return data;
+  } catch (error) {
+    console.error(`API Exception (${endpoint}):`, error);
+    throw error;
   }
-
-  return response.json();
 }
 
 // Customer API
@@ -29,9 +39,12 @@ export const customerApi = {
     method: 'PUT',
     body: JSON.stringify(data),
   }),
-  delete: (id: number) => fetchApi<any>(`/customers/${id}`, {
-    method: 'DELETE',
-  }),
+  delete: (id: number) => {
+    console.log(`Deleting customer with ID: ${id}`);
+    return fetchApi<any>(`/customers/${id}`, {
+      method: 'DELETE',
+    });
+  },
   getWorkOrders: (id: number) => fetchApi<any[]>(`/customers/${id}/workorders`),
   getVehicles: (id: number) => fetchApi<any[]>(`/customers/${id}/vehicles`),
 };

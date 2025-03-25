@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { prisma } from '../index';
+import { supabase } from '../utils/supabase';
 
 /**
  * Get all customers
@@ -7,18 +7,19 @@ import { prisma } from '../index';
  */
 export const getAllCustomers = async (req: Request, res: Response) => {
   try {
-    const customers = await prisma.customer.findMany({
-      orderBy: {
-        createdAt: 'desc'
-      }
-    });
-    
-    return res.status(200).json(customers);
-  } catch (error) {
+    const { data: customers, error } = await supabase
+      .from('Customer')
+      .select('*')
+      .order('lastName', { ascending: true });
+
+    if (error) throw error;
+
+    res.json(customers);
+  } catch (error: any) {
     console.error('Error fetching customers:', error);
-    return res.status(500).json({ 
+    res.status(500).json({
       error: 'Failed to fetch customers',
-      details: error instanceof Error ? error.message : 'Unknown error'
+      details: error.message
     });
   }
 };
@@ -30,29 +31,27 @@ export const getAllCustomers = async (req: Request, res: Response) => {
 export const getCustomerById = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    
-    const customer = await prisma.customer.findUnique({
-      where: { id: Number(id) },
-      include: {
-        vehicles: true,
-        workOrders: {
-          orderBy: {
-            createdAt: 'desc'
-          }
-        }
+    const { data: customer, error } = await supabase
+      .from('Customer')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (error) {
+      if (error.code === 'PGRST116') {
+        return res.status(404).json({
+          error: 'Customer not found'
+        });
       }
-    });
-    
-    if (!customer) {
-      return res.status(404).json({ error: 'Customer not found' });
+      throw error;
     }
-    
-    return res.status(200).json(customer);
-  } catch (error) {
-    console.error(`Error fetching customer ${req.params.id}:`, error);
-    return res.status(500).json({ 
+
+    res.json(customer);
+  } catch (error: any) {
+    console.error('Error fetching customer:', error);
+    res.status(500).json({
       error: 'Failed to fetch customer',
-      details: error instanceof Error ? error.message : 'Unknown error'
+      details: error.message
     });
   }
 };
@@ -63,35 +62,21 @@ export const getCustomerById = async (req: Request, res: Response) => {
  */
 export const createCustomer = async (req: Request, res: Response) => {
   try {
-    const { firstName, lastName, email, phone, address, city, state, zipCode, isLead, notes, source } = req.body;
-    
-    // Validate required fields
-    if (!firstName || !lastName || !phone) {
-      return res.status(400).json({ error: 'First name, last name, and phone are required' });
-    }
-    
-    const newCustomer = await prisma.customer.create({
-      data: {
-        firstName,
-        lastName,
-        email,
-        phone,
-        address,
-        city,
-        state,
-        zipCode,
-        isLead: isLead !== undefined ? isLead : true,
-        notes,
-        source
-      }
-    });
-    
-    return res.status(201).json(newCustomer);
-  } catch (error) {
+    const customerData = req.body;
+    const { data: newCustomer, error } = await supabase
+      .from('Customer')
+      .insert([customerData])
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    res.status(201).json(newCustomer);
+  } catch (error: any) {
     console.error('Error creating customer:', error);
-    return res.status(500).json({ 
+    res.status(500).json({
       error: 'Failed to create customer',
-      details: error instanceof Error ? error.message : 'Unknown error'
+      details: error.message
     });
   }
 };
@@ -103,41 +88,39 @@ export const createCustomer = async (req: Request, res: Response) => {
 export const updateCustomer = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { firstName, lastName, email, phone, address, city, state, zipCode, isLead, notes, source } = req.body;
-    
+    const customerData = req.body;
+
     // Check if customer exists
-    const existingCustomer = await prisma.customer.findUnique({
-      where: { id: Number(id) }
-    });
-    
-    if (!existingCustomer) {
-      return res.status(404).json({ error: 'Customer not found' });
-    }
-    
-    // Update customer
-    const updatedCustomer = await prisma.customer.update({
-      where: { id: Number(id) },
-      data: {
-        firstName,
-        lastName,
-        email,
-        phone,
-        address,
-        city,
-        state,
-        zipCode,
-        isLead,
-        notes,
-        source
+    const { data: existingCustomer, error: checkError } = await supabase
+      .from('Customer')
+      .select()
+      .eq('id', id)
+      .single();
+
+    if (checkError) {
+      if (checkError.code === 'PGRST116') {
+        return res.status(404).json({
+          error: 'Customer not found'
+        });
       }
-    });
-    
-    return res.status(200).json(updatedCustomer);
-  } catch (error) {
-    console.error(`Error updating customer ${req.params.id}:`, error);
-    return res.status(500).json({ 
+      throw checkError;
+    }
+
+    const { data: updatedCustomer, error } = await supabase
+      .from('Customer')
+      .update(customerData)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    res.json(updatedCustomer);
+  } catch (error: any) {
+    console.error('Error updating customer:', error);
+    res.status(500).json({
       error: 'Failed to update customer',
-      details: error instanceof Error ? error.message : 'Unknown error'
+      details: error.message
     });
   }
 };
@@ -149,27 +132,73 @@ export const updateCustomer = async (req: Request, res: Response) => {
 export const deleteCustomer = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    
+    console.log(`Attempting to delete customer with ID: ${id}`);
+
     // Check if customer exists
-    const existingCustomer = await prisma.customer.findUnique({
-      where: { id: Number(id) }
-    });
+    const { data: existingCustomer, error: checkError } = await supabase
+      .from('Customer')
+      .select()
+      .eq('id', id)
+      .single();
+
+    if (checkError) {
+      console.error(`Customer check error for ID ${id}:`, checkError);
+      if (checkError.code === 'PGRST116') {
+        return res.status(404).json({
+          error: 'Customer not found'
+        });
+      }
+      throw checkError;
+    }
+
+    // Check for related vehicles
+    const { data: vehicles, error: vehiclesError } = await supabase
+      .from('Vehicle')
+      .select('id')
+      .eq('customerId', id);
+      
+    if (vehiclesError) throw vehiclesError;
     
-    if (!existingCustomer) {
-      return res.status(404).json({ error: 'Customer not found' });
+    if (vehicles && vehicles.length > 0) {
+      return res.status(400).json({
+        error: 'Cannot delete customer with related vehicles',
+        details: 'Please delete the customer\'s vehicles first'
+      });
     }
     
-    // Delete customer
-    await prisma.customer.delete({
-      where: { id: Number(id) }
-    });
+    // Check for related work orders
+    const { data: workOrders, error: workOrdersError } = await supabase
+      .from('WorkOrder')
+      .select('id')
+      .eq('customerId', id);
+      
+    if (workOrdersError) throw workOrdersError;
     
-    return res.status(200).json({ message: 'Customer deleted successfully' });
-  } catch (error) {
-    console.error(`Error deleting customer ${req.params.id}:`, error);
-    return res.status(500).json({ 
+    if (workOrders && workOrders.length > 0) {
+      return res.status(400).json({
+        error: 'Cannot delete customer with related work orders',
+        details: 'Please delete the customer\'s work orders first'
+      });
+    }
+
+    // Perform the delete operation
+    const { error } = await supabase
+      .from('Customer')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      console.error(`Error during delete operation for customer ${id}:`, error);
+      throw error;
+    }
+
+    console.log(`Successfully deleted customer with ID: ${id}`);
+    res.status(204).send();
+  } catch (error: any) {
+    console.error('Error deleting customer:', error);
+    res.status(500).json({
       error: 'Failed to delete customer',
-      details: error instanceof Error ? error.message : 'Unknown error'
+      details: error.message || 'Unknown error occurred'
     });
   }
 };
@@ -181,34 +210,41 @@ export const deleteCustomer = async (req: Request, res: Response) => {
 export const getCustomerWorkOrders = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    
+
     // Check if customer exists
-    const existingCustomer = await prisma.customer.findUnique({
-      where: { id: Number(id) }
-    });
-    
-    if (!existingCustomer) {
-      return res.status(404).json({ error: 'Customer not found' });
-    }
-    
-    // Get customer work orders
-    const workOrders = await prisma.workOrder.findMany({
-      where: { customerId: Number(id) },
-      orderBy: {
-        createdAt: 'desc'
-      },
-      include: {
-        vehicle: true,
-        technician: true
+    const { data: existingCustomer, error: checkError } = await supabase
+      .from('Customer')
+      .select()
+      .eq('id', id)
+      .single();
+
+    if (checkError) {
+      if (checkError.code === 'PGRST116') {
+        return res.status(404).json({
+          error: 'Customer not found'
+        });
       }
-    });
-    
-    return res.status(200).json(workOrders);
-  } catch (error) {
-    console.error(`Error fetching work orders for customer ${req.params.id}:`, error);
-    return res.status(500).json({ 
+      throw checkError;
+    }
+
+    const { data: workOrders, error } = await supabase
+      .from('WorkOrder')
+      .select(`
+        *,
+        vehicle:vehicleId (*),
+        technician:technicianId (*)
+      `)
+      .eq('customerId', id)
+      .order('createdAt', { ascending: false });
+
+    if (error) throw error;
+
+    res.json(workOrders);
+  } catch (error: any) {
+    console.error('Error fetching customer work orders:', error);
+    res.status(500).json({
       error: 'Failed to fetch customer work orders',
-      details: error instanceof Error ? error.message : 'Unknown error'
+      details: error.message
     });
   }
 };
@@ -220,30 +256,37 @@ export const getCustomerWorkOrders = async (req: Request, res: Response) => {
 export const getCustomerVehicles = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    
+
     // Check if customer exists
-    const existingCustomer = await prisma.customer.findUnique({
-      where: { id: Number(id) }
-    });
-    
-    if (!existingCustomer) {
-      return res.status(404).json({ error: 'Customer not found' });
-    }
-    
-    // Get customer vehicles
-    const vehicles = await prisma.vehicle.findMany({
-      where: { customerId: Number(id) },
-      orderBy: {
-        createdAt: 'desc'
+    const { data: existingCustomer, error: checkError } = await supabase
+      .from('Customer')
+      .select()
+      .eq('id', id)
+      .single();
+
+    if (checkError) {
+      if (checkError.code === 'PGRST116') {
+        return res.status(404).json({
+          error: 'Customer not found'
+        });
       }
-    });
-    
-    return res.status(200).json(vehicles);
-  } catch (error) {
-    console.error(`Error fetching vehicles for customer ${req.params.id}:`, error);
-    return res.status(500).json({ 
+      throw checkError;
+    }
+
+    const { data: vehicles, error } = await supabase
+      .from('Vehicle')
+      .select('*')
+      .eq('customerId', id)
+      .order('createdAt', { ascending: false });
+
+    if (error) throw error;
+
+    res.json(vehicles);
+  } catch (error: any) {
+    console.error('Error fetching customer vehicles:', error);
+    res.status(500).json({
       error: 'Failed to fetch customer vehicles',
-      details: error instanceof Error ? error.message : 'Unknown error'
+      details: error.message
     });
   }
 }; 
