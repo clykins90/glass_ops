@@ -1,56 +1,58 @@
-import { Request, Response } from 'express';
-import { 
-  getAllCustomers, 
-  getCustomerById, 
-  createCustomer, 
-  updateCustomer, 
-  deleteCustomer,
-  getCustomerWorkOrders,
-  getCustomerVehicles
-} from '../customer.controller';
-import { prisma } from '../../index';
+// Create the mock functions at the top of the file
+const mockFrom = jest.fn().mockReturnThis();
+const mockSelect = jest.fn().mockReturnThis();
+const mockInsert = jest.fn().mockReturnThis();
+const mockUpdate = jest.fn().mockReturnThis();
+const mockDelete = jest.fn().mockReturnThis();
+const mockEq = jest.fn().mockReturnThis();
+const mockOrder = jest.fn().mockReturnThis();
+const mockSingle = jest.fn().mockReturnThis();
 
-// Mock Prisma client
-jest.mock('../../index', () => ({
-  prisma: {
-    customer: {
-      findMany: jest.fn(),
-      findUnique: jest.fn(),
-      create: jest.fn(),
-      update: jest.fn(),
-      delete: jest.fn()
-    },
-    workOrder: {
-      findMany: jest.fn()
-    },
-    vehicle: {
-      findMany: jest.fn()
-    }
+const mockDeleteChain = {
+  eq: jest.fn().mockReturnValue({ error: null })
+};
+
+// Mock Supabase client
+jest.mock('../../utils/supabase', () => ({
+  supabase: {
+    from: mockFrom,
+    select: mockSelect,
+    insert: mockInsert,
+    update: mockUpdate,
+    delete: jest.fn().mockReturnValue(mockDeleteChain),
+    eq: mockEq,
+    order: mockOrder,
+    single: mockSingle
   }
 }));
 
-// Mock request and response
-const mockRequest = () => {
-  const req: Partial<Request> = {};
-  req.body = {};
-  req.params = {};
-  return req as Request;
-};
-
-const mockResponse = () => {
-  const res: Partial<Response> = {};
-  res.status = jest.fn().mockReturnThis();
-  res.json = jest.fn().mockReturnThis();
-  return res as Response;
-};
+import { Request, Response } from 'express';
+import {
+  getAllCustomers,
+  getCustomerById,
+  createCustomer,
+  updateCustomer,
+  deleteCustomer,
+  getCustomerVehicles
+} from '../customer.controller';
 
 describe('Customer Controller', () => {
-  let req: Request;
-  let res: Response;
+  let mockReq: Partial<Request>;
+  let mockRes: Partial<Response>;
+  let mockJson: jest.Mock;
+  let mockStatus: jest.Mock;
+  let mockSend: jest.Mock;
 
   beforeEach(() => {
-    req = mockRequest();
-    res = mockResponse();
+    mockJson = jest.fn();
+    mockStatus = jest.fn().mockReturnThis();
+    mockSend = jest.fn();
+    mockRes = {
+      json: mockJson,
+      status: mockStatus,
+      send: mockSend
+    };
+    mockReq = {};
     jest.clearAllMocks();
   });
 
@@ -60,87 +62,186 @@ describe('Customer Controller', () => {
         { id: 1, firstName: 'John', lastName: 'Doe' },
         { id: 2, firstName: 'Jane', lastName: 'Smith' }
       ];
-      
-      (prisma.customer.findMany as jest.Mock).mockResolvedValue(mockCustomers);
-      
-      await getAllCustomers(req, res);
-      
-      expect(prisma.customer.findMany).toHaveBeenCalledWith({
-        orderBy: { createdAt: 'desc' }
-      });
-      expect(res.status).toHaveBeenCalledWith(200);
-      expect(res.json).toHaveBeenCalledWith(mockCustomers);
+
+      mockOrder.mockResolvedValue({ data: mockCustomers, error: null });
+
+      await getAllCustomers(mockReq as Request, mockRes as Response);
+
+      expect(mockFrom).toHaveBeenCalledWith('Customer');
+      expect(mockSelect).toHaveBeenCalledWith('*');
+      expect(mockJson).toHaveBeenCalledWith(mockCustomers);
     });
 
     it('should handle errors', async () => {
-      const error = new Error('Database error');
-      (prisma.customer.findMany as jest.Mock).mockRejectedValue(error);
-      
-      await getAllCustomers(req, res);
-      
-      expect(res.status).toHaveBeenCalledWith(500);
-      expect(res.json).toHaveBeenCalledWith({
+      const mockError = new Error('Database error');
+      mockOrder.mockResolvedValue({ data: null, error: mockError });
+
+      await getAllCustomers(mockReq as Request, mockRes as Response);
+
+      expect(mockStatus).toHaveBeenCalledWith(500);
+      expect(mockJson).toHaveBeenCalledWith({
         error: 'Failed to fetch customers',
-        details: 'Database error'
+        details: mockError.message
       });
     });
   });
 
   describe('getCustomerById', () => {
     it('should return a customer by ID', async () => {
-      const mockCustomer = { 
-        id: 1, 
-        firstName: 'John', 
-        lastName: 'Doe',
-        vehicles: [],
-        workOrders: []
-      };
-      
-      req.params.id = '1';
-      (prisma.customer.findUnique as jest.Mock).mockResolvedValue(mockCustomer);
-      
-      await getCustomerById(req, res);
-      
-      expect(prisma.customer.findUnique).toHaveBeenCalledWith({
-        where: { id: 1 },
-        include: {
-          vehicles: true,
-          workOrders: {
-            orderBy: {
-              createdAt: 'desc'
-            }
-          }
-        }
+      const mockCustomer = { id: 1, firstName: 'John', lastName: 'Doe' };
+      mockReq.params = { id: '1' };
+
+      mockSingle.mockResolvedValue({ data: mockCustomer, error: null });
+
+      await getCustomerById(mockReq as Request, mockRes as Response);
+
+      expect(mockFrom).toHaveBeenCalledWith('Customer');
+      expect(mockSelect).toHaveBeenCalledWith('*');
+      expect(mockEq).toHaveBeenCalledWith('id', '1');
+      expect(mockJson).toHaveBeenCalledWith(mockCustomer);
+    });
+
+    it('should return 404 when customer not found', async () => {
+      mockReq.params = { id: '999' };
+
+      mockSingle.mockResolvedValue({ 
+        data: null, 
+        error: { code: 'PGRST116' } 
       });
-      expect(res.status).toHaveBeenCalledWith(200);
-      expect(res.json).toHaveBeenCalledWith(mockCustomer);
+
+      await getCustomerById(mockReq as Request, mockRes as Response);
+
+      expect(mockStatus).toHaveBeenCalledWith(404);
+      expect(mockJson).toHaveBeenCalledWith({ error: 'Customer not found' });
+    });
+  });
+
+  describe('createCustomer', () => {
+    it('should create a new customer', async () => {
+      const mockCustomerData = { firstName: 'John', lastName: 'Doe' };
+      const mockNewCustomer = { id: 1, ...mockCustomerData };
+      mockReq.body = mockCustomerData;
+
+      mockSingle.mockResolvedValue({ data: mockNewCustomer, error: null });
+
+      await createCustomer(mockReq as Request, mockRes as Response);
+
+      expect(mockFrom).toHaveBeenCalledWith('Customer');
+      expect(mockInsert).toHaveBeenCalledWith([mockCustomerData]);
+      expect(mockStatus).toHaveBeenCalledWith(201);
+      expect(mockJson).toHaveBeenCalledWith(mockNewCustomer);
     });
 
-    it('should return 404 if customer not found', async () => {
-      req.params.id = '999';
-      (prisma.customer.findUnique as jest.Mock).mockResolvedValue(null);
-      
-      await getCustomerById(req, res);
-      
-      expect(res.status).toHaveBeenCalledWith(404);
-      expect(res.json).toHaveBeenCalledWith({ error: 'Customer not found' });
-    });
+    it('should handle creation errors', async () => {
+      const mockError = new Error('Database error');
+      mockReq.body = { firstName: 'John', lastName: 'Doe' };
 
-    it('should handle errors', async () => {
-      const error = new Error('Database error');
-      req.params.id = '1';
-      (prisma.customer.findUnique as jest.Mock).mockRejectedValue(error);
-      
-      await getCustomerById(req, res);
-      
-      expect(res.status).toHaveBeenCalledWith(500);
-      expect(res.json).toHaveBeenCalledWith({
-        error: 'Failed to fetch customer',
-        details: 'Database error'
+      mockSingle.mockResolvedValue({ data: null, error: mockError });
+
+      await createCustomer(mockReq as Request, mockRes as Response);
+
+      expect(mockStatus).toHaveBeenCalledWith(500);
+      expect(mockJson).toHaveBeenCalledWith({
+        error: 'Failed to create customer',
+        details: mockError.message
       });
     });
   });
 
-  // Additional tests for createCustomer, updateCustomer, deleteCustomer, etc.
-  // would follow the same pattern
+  describe('updateCustomer', () => {
+    it('should update a customer', async () => {
+      const mockCustomerData = { firstName: 'John Updated', lastName: 'Doe' };
+      const mockUpdatedCustomer = { id: 1, ...mockCustomerData };
+      mockReq.params = { id: '1' };
+      mockReq.body = mockCustomerData;
+
+      mockSingle
+        .mockResolvedValueOnce({ data: { id: 1 }, error: null })
+        .mockResolvedValueOnce({ data: mockUpdatedCustomer, error: null });
+
+      await updateCustomer(mockReq as Request, mockRes as Response);
+
+      expect(mockFrom).toHaveBeenCalledWith('Customer');
+      expect(mockUpdate).toHaveBeenCalledWith(mockCustomerData);
+      expect(mockEq).toHaveBeenCalledWith('id', '1');
+      expect(mockJson).toHaveBeenCalledWith(mockUpdatedCustomer);
+    });
+
+    it('should return 404 when customer not found', async () => {
+      mockReq.params = { id: '999' };
+      mockReq.body = { firstName: 'John' };
+
+      mockSingle.mockResolvedValue({ 
+        data: null, 
+        error: { code: 'PGRST116' } 
+      });
+
+      await updateCustomer(mockReq as Request, mockRes as Response);
+
+      expect(mockStatus).toHaveBeenCalledWith(404);
+      expect(mockJson).toHaveBeenCalledWith({ error: 'Customer not found' });
+    });
+  });
+
+  describe('deleteCustomer', () => {
+    it('should delete a customer', async () => {
+      mockReq.params = { id: '1' };
+
+      mockSingle.mockResolvedValue({ data: { id: 1 }, error: null });
+
+      await deleteCustomer(mockReq as Request, mockRes as Response);
+
+      expect(mockFrom).toHaveBeenCalledWith('Customer');
+      expect(mockDeleteChain.eq).toHaveBeenCalledWith('id', '1');
+      expect(mockStatus).toHaveBeenCalledWith(204);
+      expect(mockSend).toHaveBeenCalled();
+    });
+
+    it('should return 404 when customer not found', async () => {
+      mockReq.params = { id: '999' };
+
+      mockSingle.mockResolvedValue({ 
+        data: null, 
+        error: { code: 'PGRST116' } 
+      });
+
+      await deleteCustomer(mockReq as Request, mockRes as Response);
+
+      expect(mockStatus).toHaveBeenCalledWith(404);
+      expect(mockJson).toHaveBeenCalledWith({ error: 'Customer not found' });
+    });
+  });
+
+  describe('getCustomerVehicles', () => {
+    it('should return customer vehicles', async () => {
+      const mockVehicles = [
+        { id: 1, customerId: 1, make: 'Toyota', model: 'Camry' },
+        { id: 2, customerId: 1, make: 'Honda', model: 'Civic' }
+      ];
+      mockReq.params = { id: '1' };
+
+      mockSingle.mockResolvedValueOnce({ data: { id: 1 }, error: null });
+      mockOrder.mockResolvedValue({ data: mockVehicles, error: null });
+
+      await getCustomerVehicles(mockReq as Request, mockRes as Response);
+
+      expect(mockFrom).toHaveBeenCalledWith('Customer');
+      expect(mockFrom).toHaveBeenCalledWith('Vehicle');
+      expect(mockJson).toHaveBeenCalledWith(mockVehicles);
+    });
+
+    it('should return 404 when customer not found', async () => {
+      mockReq.params = { id: '999' };
+
+      mockSingle.mockResolvedValue({ 
+        data: null, 
+        error: { code: 'PGRST116' } 
+      });
+
+      await getCustomerVehicles(mockReq as Request, mockRes as Response);
+
+      expect(mockStatus).toHaveBeenCalledWith(404);
+      expect(mockJson).toHaveBeenCalledWith({ error: 'Customer not found' });
+    });
+  });
 }); 

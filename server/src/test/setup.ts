@@ -1,14 +1,21 @@
-import { PrismaClient } from '@prisma/client';
 import dotenv from 'dotenv';
 
 // Load environment variables
-dotenv.config();
+dotenv.config({ path: '.env.test' });
 
 // Set test timeout
 jest.setTimeout(30000);
 
-// Global Prisma client for tests
-export const prisma = new PrismaClient();
+// Mock Prisma since it doesn't seem to be actually used
+jest.mock('@prisma/client', () => {
+  return {
+    PrismaClient: jest.fn().mockImplementation(() => {
+      return {
+        $disconnect: jest.fn()
+      };
+    })
+  };
+});
 
 // Setup before all tests
 beforeAll(async () => {
@@ -22,5 +29,5 @@ afterEach(async () => {
 
 // Cleanup after all tests
 afterAll(async () => {
-  await prisma.$disconnect();
+  // No actual prisma instance to disconnect
 }); 

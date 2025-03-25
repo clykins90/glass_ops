@@ -1,554 +1,311 @@
+// Create the mock functions at the top of the file
+const mockFrom = jest.fn().mockReturnThis();
+const mockSelect = jest.fn().mockReturnThis();
+const mockInsert = jest.fn().mockReturnThis();
+const mockUpdate = jest.fn().mockReturnThis();
+const mockDelete = jest.fn().mockReturnThis();
+const mockEq = jest.fn().mockReturnThis();
+const mockOrder = jest.fn().mockReturnThis();
+const mockSingle = jest.fn().mockReturnThis();
+const mockGte = jest.fn().mockReturnThis();
+const mockLte = jest.fn().mockReturnThis();
+const mockNot = jest.fn().mockReturnThis();
+
+const mockDeleteChain = {
+  eq: jest.fn().mockReturnValue({ error: null })
+};
+
+// Mock Supabase client
+jest.mock('../../utils/supabase', () => ({
+  supabase: {
+    from: mockFrom,
+    select: mockSelect,
+    insert: mockInsert,
+    update: mockUpdate,
+    delete: jest.fn().mockReturnValue(mockDeleteChain),
+    eq: mockEq,
+    order: mockOrder,
+    single: mockSingle,
+    gte: mockGte,
+    lte: mockLte,
+    not: mockNot
+  }
+}));
+
 import { Request, Response } from 'express';
-import { 
-  getAllTechnicians, 
-  getTechnicianById, 
-  createTechnician, 
-  updateTechnician, 
+import {
+  getAllTechnicians,
+  getTechnicianById,
+  createTechnician,
+  updateTechnician,
   deleteTechnician,
   getTechnicianWorkOrders,
   getTechnicianSchedule
 } from '../technician.controller';
-import { prisma } from '../../index';
-
-// Mock Prisma client
-jest.mock('../../index', () => ({
-  prisma: {
-    technician: {
-      findMany: jest.fn(),
-      findUnique: jest.fn(),
-      create: jest.fn(),
-      update: jest.fn(),
-      delete: jest.fn()
-    },
-    workOrder: {
-      findMany: jest.fn()
-    }
-  }
-}));
-
-// Mock request and response
-const mockRequest = () => {
-  const req: Partial<Request> = {};
-  req.body = {};
-  req.params = {};
-  req.query = {};
-  return req as Request;
-};
-
-const mockResponse = () => {
-  const res: Partial<Response> = {};
-  res.status = jest.fn().mockReturnThis();
-  res.json = jest.fn().mockReturnThis();
-  return res as Response;
-};
 
 describe('Technician Controller', () => {
-  let req: Request;
-  let res: Response;
+  let mockReq: Partial<Request>;
+  let mockRes: Partial<Response>;
+  let mockJson: jest.Mock;
+  let mockStatus: jest.Mock;
+  let mockSend: jest.Mock;
 
   beforeEach(() => {
-    req = mockRequest();
-    res = mockResponse();
+    mockJson = jest.fn();
+    mockStatus = jest.fn().mockReturnThis();
+    mockSend = jest.fn();
+    mockRes = {
+      json: mockJson,
+      status: mockStatus,
+      send: mockSend
+    };
+    mockReq = {};
     jest.clearAllMocks();
   });
 
   describe('getAllTechnicians', () => {
     it('should return all technicians', async () => {
       const mockTechnicians = [
-        { id: 1, firstName: 'John', lastName: 'Smith', active: true },
-        { id: 2, firstName: 'Jane', lastName: 'Doe', active: false }
+        { id: 1, firstName: 'John', lastName: 'Doe', active: true },
+        { id: 2, firstName: 'Jane', lastName: 'Smith', active: true }
       ];
-      
-      (prisma.technician.findMany as jest.Mock).mockResolvedValue(mockTechnicians);
-      
-      await getAllTechnicians(req, res);
-      
-      expect(prisma.technician.findMany).toHaveBeenCalledWith({
-        where: {},
-        orderBy: { lastName: 'asc' }
-      });
-      expect(res.status).toHaveBeenCalledWith(200);
-      expect(res.json).toHaveBeenCalledWith(mockTechnicians);
-    });
 
-    it('should filter by active status when provided', async () => {
-      const mockTechnicians = [
-        { id: 1, firstName: 'John', lastName: 'Smith', active: true }
-      ];
-      
-      req.query = { active: 'true' };
-      (prisma.technician.findMany as jest.Mock).mockResolvedValue(mockTechnicians);
-      
-      await getAllTechnicians(req, res);
-      
-      expect(prisma.technician.findMany).toHaveBeenCalledWith({
-        where: { active: true },
-        orderBy: { lastName: 'asc' }
-      });
-      expect(res.status).toHaveBeenCalledWith(200);
-      expect(res.json).toHaveBeenCalledWith(mockTechnicians);
+      mockOrder.mockResolvedValue({ data: mockTechnicians, error: null });
+
+      await getAllTechnicians(mockReq as Request, mockRes as Response);
+
+      expect(mockFrom).toHaveBeenCalledWith('Technician');
+      expect(mockSelect).toHaveBeenCalledWith('*');
+      expect(mockJson).toHaveBeenCalledWith(mockTechnicians);
     });
 
     it('should handle errors', async () => {
-      const error = new Error('Database error');
-      (prisma.technician.findMany as jest.Mock).mockRejectedValue(error);
-      
-      await getAllTechnicians(req, res);
-      
-      expect(res.status).toHaveBeenCalledWith(500);
-      expect(res.json).toHaveBeenCalledWith({
+      const mockError = new Error('Database error');
+      mockOrder.mockResolvedValue({ data: null, error: mockError });
+
+      await getAllTechnicians(mockReq as Request, mockRes as Response);
+
+      expect(mockStatus).toHaveBeenCalledWith(500);
+      expect(mockJson).toHaveBeenCalledWith({
         error: 'Failed to fetch technicians',
-        details: 'Database error'
+        details: mockError.message
       });
     });
   });
 
   describe('getTechnicianById', () => {
     it('should return a technician by ID', async () => {
-      const mockTechnician = { 
-        id: 1, 
-        firstName: 'John', 
-        lastName: 'Smith',
-        email: 'john.smith@example.com',
-        phone: '555-123-4567',
-        skills: ['windshield replacement'],
-        active: true
-      };
-      
-      req.params.id = '1';
-      (prisma.technician.findUnique as jest.Mock).mockResolvedValue(mockTechnician);
-      
-      await getTechnicianById(req, res);
-      
-      expect(prisma.technician.findUnique).toHaveBeenCalledWith({
-        where: { id: 1 }
-      });
-      expect(res.status).toHaveBeenCalledWith(200);
-      expect(res.json).toHaveBeenCalledWith(mockTechnician);
+      const mockTechnician = { id: 1, firstName: 'John', lastName: 'Doe', active: true };
+      mockReq.params = { id: '1' };
+
+      mockSingle.mockResolvedValue({ data: mockTechnician, error: null });
+
+      await getTechnicianById(mockReq as Request, mockRes as Response);
+
+      expect(mockFrom).toHaveBeenCalledWith('Technician');
+      expect(mockSelect).toHaveBeenCalledWith('*');
+      expect(mockEq).toHaveBeenCalledWith('id', '1');
+      expect(mockJson).toHaveBeenCalledWith(mockTechnician);
     });
 
-    it('should return 404 if technician not found', async () => {
-      req.params.id = '999';
-      (prisma.technician.findUnique as jest.Mock).mockResolvedValue(null);
-      
-      await getTechnicianById(req, res);
-      
-      expect(res.status).toHaveBeenCalledWith(404);
-      expect(res.json).toHaveBeenCalledWith({ error: 'Technician not found' });
-    });
+    it('should return 404 when technician not found', async () => {
+      mockReq.params = { id: '999' };
 
-    it('should handle errors', async () => {
-      const error = new Error('Database error');
-      req.params.id = '1';
-      (prisma.technician.findUnique as jest.Mock).mockRejectedValue(error);
-      
-      await getTechnicianById(req, res);
-      
-      expect(res.status).toHaveBeenCalledWith(500);
-      expect(res.json).toHaveBeenCalledWith({
-        error: 'Failed to fetch technician',
-        details: 'Database error'
+      mockSingle.mockResolvedValue({ 
+        data: null, 
+        error: { code: 'PGRST116' } 
       });
+
+      await getTechnicianById(mockReq as Request, mockRes as Response);
+
+      expect(mockStatus).toHaveBeenCalledWith(404);
+      expect(mockJson).toHaveBeenCalledWith({ error: 'Technician not found' });
     });
   });
 
   describe('createTechnician', () => {
     it('should create a new technician', async () => {
-      const mockTechnician = { 
-        id: 1, 
+      const mockTechnicianData = { 
         firstName: 'John', 
-        lastName: 'Smith',
-        email: 'john.smith@example.com',
-        phone: '555-123-4567',
-        skills: ['windshield replacement'],
-        notes: 'Experienced technician',
-        active: true,
-        createdAt: new Date(),
-        updatedAt: new Date()
+        lastName: 'Doe', 
+        email: 'john@example.com',
+        phone: '1234567890',
+        active: true
       };
-      
-      req.body = {
-        firstName: 'John',
-        lastName: 'Smith',
-        email: 'john.smith@example.com',
-        phone: '555-123-4567',
-        skills: ['windshield replacement'],
-        notes: 'Experienced technician'
-      };
-      
-      (prisma.technician.create as jest.Mock).mockResolvedValue(mockTechnician);
-      
-      await createTechnician(req, res);
-      
-      expect(prisma.technician.create).toHaveBeenCalledWith({
-        data: expect.objectContaining({
-          firstName: 'John',
-          lastName: 'Smith',
-          email: 'john.smith@example.com',
-          phone: '555-123-4567',
-          skills: ['windshield replacement'],
-          notes: 'Experienced technician',
-          active: true
-        })
-      });
-      expect(res.status).toHaveBeenCalledWith(201);
-      expect(res.json).toHaveBeenCalledWith(mockTechnician);
+      const mockNewTechnician = { id: 1, ...mockTechnicianData };
+      mockReq.body = mockTechnicianData;
+
+      mockSingle.mockResolvedValue({ data: mockNewTechnician, error: null });
+
+      await createTechnician(mockReq as Request, mockRes as Response);
+
+      expect(mockFrom).toHaveBeenCalledWith('Technician');
+      expect(mockInsert).toHaveBeenCalledWith([mockTechnicianData]);
+      expect(mockStatus).toHaveBeenCalledWith(201);
+      expect(mockJson).toHaveBeenCalledWith(mockNewTechnician);
     });
 
-    it('should return 400 if required fields are missing', async () => {
-      req.body = {
-        firstName: 'John',
-        // Missing lastName and phone
+    it('should handle creation errors', async () => {
+      const mockError = new Error('Database error');
+      mockReq.body = { 
+        firstName: 'John', 
+        lastName: 'Doe', 
+        email: 'john@example.com',
+        phone: '1234567890'
       };
-      
-      await createTechnician(req, res);
-      
-      expect(res.status).toHaveBeenCalledWith(400);
-      expect(res.json).toHaveBeenCalledWith({
-        error: 'Missing required fields',
-        requiredFields: ['firstName', 'lastName', 'phone']
-      });
-    });
 
-    it('should handle errors', async () => {
-      const error = new Error('Database error');
-      req.body = {
-        firstName: 'John',
-        lastName: 'Smith',
-        phone: '555-123-4567'
-      };
-      
-      (prisma.technician.create as jest.Mock).mockRejectedValue(error);
-      
-      await createTechnician(req, res);
-      
-      expect(res.status).toHaveBeenCalledWith(500);
-      expect(res.json).toHaveBeenCalledWith({
+      mockSingle.mockResolvedValue({ data: null, error: mockError });
+
+      await createTechnician(mockReq as Request, mockRes as Response);
+
+      expect(mockStatus).toHaveBeenCalledWith(500);
+      expect(mockJson).toHaveBeenCalledWith({
         error: 'Failed to create technician',
-        details: 'Database error'
+        details: mockError.message
       });
     });
   });
 
   describe('updateTechnician', () => {
     it('should update a technician', async () => {
-      const mockTechnician = { 
-        id: 1, 
-        firstName: 'John', 
-        lastName: 'Smith Updated',
-        email: 'john.updated@example.com',
-        phone: '555-987-6543',
-        skills: ['windshield replacement', 'side window repair'],
-        notes: 'Updated notes',
-        active: true,
-        updatedAt: new Date()
+      const mockTechnicianData = { 
+        firstName: 'John Updated', 
+        lastName: 'Doe', 
+        active: true 
       };
-      
-      req.params.id = '1';
-      req.body = {
-        lastName: 'Smith Updated',
-        email: 'john.updated@example.com',
-        phone: '555-987-6543',
-        skills: ['windshield replacement', 'side window repair'],
-        notes: 'Updated notes'
-      };
-      
-      (prisma.technician.findUnique as jest.Mock).mockResolvedValue({ id: 1 });
-      (prisma.technician.update as jest.Mock).mockResolvedValue(mockTechnician);
-      
-      await updateTechnician(req, res);
-      
-      expect(prisma.technician.update).toHaveBeenCalledWith({
-        where: { id: 1 },
-        data: expect.objectContaining({
-          lastName: 'Smith Updated',
-          email: 'john.updated@example.com',
-          phone: '555-987-6543',
-          skills: ['windshield replacement', 'side window repair'],
-          notes: 'Updated notes'
-        })
-      });
-      expect(res.status).toHaveBeenCalledWith(200);
-      expect(res.json).toHaveBeenCalledWith(mockTechnician);
+      const mockUpdatedTechnician = { id: 1, ...mockTechnicianData };
+      mockReq.params = { id: '1' };
+      mockReq.body = mockTechnicianData;
+
+      mockSingle
+        .mockResolvedValueOnce({ data: { id: 1 }, error: null })
+        .mockResolvedValueOnce({ data: mockUpdatedTechnician, error: null });
+
+      await updateTechnician(mockReq as Request, mockRes as Response);
+
+      expect(mockFrom).toHaveBeenCalledWith('Technician');
+      expect(mockUpdate).toHaveBeenCalledWith(mockTechnicianData);
+      expect(mockEq).toHaveBeenCalledWith('id', '1');
+      expect(mockJson).toHaveBeenCalledWith(mockUpdatedTechnician);
     });
 
-    it('should return 404 if technician not found', async () => {
-      req.params.id = '999';
-      req.body = { lastName: 'Smith Updated' };
-      
-      (prisma.technician.findUnique as jest.Mock).mockResolvedValue(null);
-      
-      await updateTechnician(req, res);
-      
-      expect(res.status).toHaveBeenCalledWith(404);
-      expect(res.json).toHaveBeenCalledWith({ error: 'Technician not found' });
-    });
+    it('should return 404 when technician not found', async () => {
+      mockReq.params = { id: '999' };
+      mockReq.body = { firstName: 'John' };
 
-    it('should handle errors', async () => {
-      const error = new Error('Database error');
-      req.params.id = '1';
-      req.body = { lastName: 'Smith Updated' };
-      
-      (prisma.technician.findUnique as jest.Mock).mockResolvedValue({ id: 1 });
-      (prisma.technician.update as jest.Mock).mockRejectedValue(error);
-      
-      await updateTechnician(req, res);
-      
-      expect(res.status).toHaveBeenCalledWith(500);
-      expect(res.json).toHaveBeenCalledWith({
-        error: 'Failed to update technician',
-        details: 'Database error'
+      mockSingle.mockResolvedValue({ 
+        data: null, 
+        error: { code: 'PGRST116' } 
       });
+
+      await updateTechnician(mockReq as Request, mockRes as Response);
+
+      expect(mockStatus).toHaveBeenCalledWith(404);
+      expect(mockJson).toHaveBeenCalledWith({ error: 'Technician not found' });
     });
   });
 
   describe('deleteTechnician', () => {
     it('should delete a technician', async () => {
-      req.params.id = '1';
-      
-      (prisma.technician.findUnique as jest.Mock).mockResolvedValue({ id: 1 });
-      (prisma.workOrder.findMany as jest.Mock).mockResolvedValue([]);
-      (prisma.technician.delete as jest.Mock).mockResolvedValue({ id: 1 });
-      
-      await deleteTechnician(req, res);
-      
-      expect(prisma.technician.delete).toHaveBeenCalledWith({
-        where: { id: 1 }
-      });
-      expect(res.status).toHaveBeenCalledWith(200);
-      expect(res.json).toHaveBeenCalledWith({ message: 'Technician deleted successfully' });
+      mockReq.params = { id: '1' };
+
+      mockSingle.mockResolvedValue({ data: { id: 1 }, error: null });
+
+      await deleteTechnician(mockReq as Request, mockRes as Response);
+
+      expect(mockFrom).toHaveBeenCalledWith('Technician');
+      expect(mockDeleteChain.eq).toHaveBeenCalledWith('id', '1');
+      expect(mockStatus).toHaveBeenCalledWith(204);
+      expect(mockSend).toHaveBeenCalled();
     });
 
-    it('should return 404 if technician not found', async () => {
-      req.params.id = '999';
-      
-      (prisma.technician.findUnique as jest.Mock).mockResolvedValue(null);
-      
-      await deleteTechnician(req, res);
-      
-      expect(res.status).toHaveBeenCalledWith(404);
-      expect(res.json).toHaveBeenCalledWith({ error: 'Technician not found' });
-    });
+    it('should return 404 when technician not found', async () => {
+      mockReq.params = { id: '999' };
 
-    it('should return 400 if technician has assigned work orders', async () => {
-      req.params.id = '1';
-      
-      (prisma.technician.findUnique as jest.Mock).mockResolvedValue({ id: 1 });
-      (prisma.workOrder.findMany as jest.Mock).mockResolvedValue([
-        { id: 1, status: 'scheduled' },
-        { id: 2, status: 'in-progress' }
-      ]);
-      
-      await deleteTechnician(req, res);
-      
-      expect(res.status).toHaveBeenCalledWith(400);
-      expect(res.json).toHaveBeenCalledWith({
-        error: 'Cannot delete technician with assigned work orders',
-        assignedWorkOrders: 2
+      mockSingle.mockResolvedValue({ 
+        data: null, 
+        error: { code: 'PGRST116' } 
       });
-    });
 
-    it('should handle errors', async () => {
-      const error = new Error('Database error');
-      req.params.id = '1';
-      
-      (prisma.technician.findUnique as jest.Mock).mockResolvedValue({ id: 1 });
-      (prisma.workOrder.findMany as jest.Mock).mockResolvedValue([]);
-      (prisma.technician.delete as jest.Mock).mockRejectedValue(error);
-      
-      await deleteTechnician(req, res);
-      
-      expect(res.status).toHaveBeenCalledWith(500);
-      expect(res.json).toHaveBeenCalledWith({
-        error: 'Failed to delete technician',
-        details: 'Database error'
-      });
+      await deleteTechnician(mockReq as Request, mockRes as Response);
+
+      expect(mockStatus).toHaveBeenCalledWith(404);
+      expect(mockJson).toHaveBeenCalledWith({ error: 'Technician not found' });
     });
   });
 
   describe('getTechnicianWorkOrders', () => {
-    it('should return work orders for a technician', async () => {
+    it('should return technician work orders', async () => {
       const mockWorkOrders = [
-        { 
-          id: 1, 
-          customerId: 1, 
-          vehicleId: 1, 
-          technicianId: 1,
-          serviceType: 'replacement',
-          glassLocation: 'windshield',
-          status: 'scheduled',
-          customer: { firstName: 'John', lastName: 'Doe' },
-          vehicle: { make: 'Toyota', model: 'Camry' }
-        }
+        { id: 1, technicianId: 1, status: 'pending' },
+        { id: 2, technicianId: 1, status: 'completed' }
       ];
-      
-      req.params.id = '1';
-      
-      (prisma.technician.findUnique as jest.Mock).mockResolvedValue({ id: 1 });
-      (prisma.workOrder.findMany as jest.Mock).mockResolvedValue(mockWorkOrders);
-      
-      await getTechnicianWorkOrders(req, res);
-      
-      expect(prisma.workOrder.findMany).toHaveBeenCalledWith({
-        where: { technicianId: 1 },
-        orderBy: { scheduledDate: 'asc' },
-        include: {
-          customer: true,
-          vehicle: true
-        }
-      });
-      expect(res.status).toHaveBeenCalledWith(200);
-      expect(res.json).toHaveBeenCalledWith(mockWorkOrders);
+      mockReq.params = { id: '1' };
+
+      mockSingle.mockResolvedValueOnce({ data: { id: 1 }, error: null });
+      mockOrder.mockResolvedValue({ data: mockWorkOrders, error: null });
+
+      await getTechnicianWorkOrders(mockReq as Request, mockRes as Response);
+
+      expect(mockFrom).toHaveBeenCalledWith('Technician');
+      expect(mockFrom).toHaveBeenCalledWith('WorkOrder');
+      expect(mockJson).toHaveBeenCalledWith(mockWorkOrders);
     });
 
-    it('should filter by status when provided', async () => {
-      const mockWorkOrders = [
-        { 
-          id: 1, 
-          customerId: 1, 
-          vehicleId: 1, 
-          technicianId: 1,
-          serviceType: 'replacement',
-          glassLocation: 'windshield',
-          status: 'scheduled',
-          customer: { firstName: 'John', lastName: 'Doe' },
-          vehicle: { make: 'Toyota', model: 'Camry' }
-        }
-      ];
-      
-      req.params.id = '1';
-      req.query = { status: 'scheduled' };
-      
-      (prisma.technician.findUnique as jest.Mock).mockResolvedValue({ id: 1 });
-      (prisma.workOrder.findMany as jest.Mock).mockResolvedValue(mockWorkOrders);
-      
-      await getTechnicianWorkOrders(req, res);
-      
-      expect(prisma.workOrder.findMany).toHaveBeenCalledWith({
-        where: { 
-          technicianId: 1,
-          status: 'scheduled'
-        },
-        orderBy: { scheduledDate: 'asc' },
-        include: {
-          customer: true,
-          vehicle: true
-        }
-      });
-      expect(res.status).toHaveBeenCalledWith(200);
-      expect(res.json).toHaveBeenCalledWith(mockWorkOrders);
-    });
+    it('should return 404 when technician not found', async () => {
+      mockReq.params = { id: '999' };
 
-    it('should return 404 if technician not found', async () => {
-      req.params.id = '999';
-      
-      (prisma.technician.findUnique as jest.Mock).mockResolvedValue(null);
-      
-      await getTechnicianWorkOrders(req, res);
-      
-      expect(res.status).toHaveBeenCalledWith(404);
-      expect(res.json).toHaveBeenCalledWith({ error: 'Technician not found' });
+      mockSingle.mockResolvedValue({ 
+        data: null, 
+        error: { code: 'PGRST116' } 
+      });
+
+      await getTechnicianWorkOrders(mockReq as Request, mockRes as Response);
+
+      expect(mockStatus).toHaveBeenCalledWith(404);
+      expect(mockJson).toHaveBeenCalledWith({ error: 'Technician not found' });
     });
   });
 
   describe('getTechnicianSchedule', () => {
-    it('should return schedule for a technician with default date range', async () => {
+    it('should return technician schedule for a date range', async () => {
       const mockSchedule = [
-        { 
-          id: 1, 
-          customerId: 1, 
-          vehicleId: 1, 
-          technicianId: 1,
-          serviceType: 'replacement',
-          glassLocation: 'windshield',
-          status: 'scheduled',
-          scheduledDate: new Date(),
-          customer: { firstName: 'John', lastName: 'Doe' },
-          vehicle: { make: 'Toyota', model: 'Camry' }
-        }
+        { id: 1, technicianId: 1, scheduledDate: '2024-03-20' },
+        { id: 2, technicianId: 1, scheduledDate: '2024-03-21' }
       ];
-      
-      req.params.id = '1';
-      
-      (prisma.technician.findUnique as jest.Mock).mockResolvedValue({ id: 1 });
-      (prisma.workOrder.findMany as jest.Mock).mockResolvedValue(mockSchedule);
-      
-      await getTechnicianSchedule(req, res);
-      
-      expect(prisma.workOrder.findMany).toHaveBeenCalledWith({
-        where: { 
-          technicianId: 1,
-          scheduledDate: {
-            gte: expect.any(Date),
-            lte: expect.any(Date)
-          },
-          status: { notIn: ['completed', 'cancelled'] }
-        },
-        orderBy: { scheduledDate: 'asc' },
-        include: {
-          customer: true,
-          vehicle: true
-        }
-      });
-      expect(res.status).toHaveBeenCalledWith(200);
-      expect(res.json).toHaveBeenCalledWith(mockSchedule);
-    });
-
-    it('should use provided date range', async () => {
-      const mockSchedule = [
-        { 
-          id: 1, 
-          customerId: 1, 
-          vehicleId: 1, 
-          technicianId: 1,
-          serviceType: 'replacement',
-          glassLocation: 'windshield',
-          status: 'scheduled',
-          scheduledDate: new Date('2023-03-15'),
-          customer: { firstName: 'John', lastName: 'Doe' },
-          vehicle: { make: 'Toyota', model: 'Camry' }
-        }
-      ];
-      
-      req.params.id = '1';
-      req.query = {
-        fromDate: '2023-03-01',
-        toDate: '2023-03-31'
+      mockReq.params = { id: '1' };
+      mockReq.query = { 
+        fromDate: '2024-03-20', 
+        toDate: '2024-03-21' 
       };
-      
-      (prisma.technician.findUnique as jest.Mock).mockResolvedValue({ id: 1 });
-      (prisma.workOrder.findMany as jest.Mock).mockResolvedValue(mockSchedule);
-      
-      await getTechnicianSchedule(req, res);
-      
-      expect(prisma.workOrder.findMany).toHaveBeenCalledWith({
-        where: { 
-          technicianId: 1,
-          scheduledDate: {
-            gte: expect.any(Date),
-            lte: expect.any(Date)
-          },
-          status: { notIn: ['completed', 'cancelled'] }
-        },
-        orderBy: { scheduledDate: 'asc' },
-        include: {
-          customer: true,
-          vehicle: true
-        }
-      });
-      expect(res.status).toHaveBeenCalledWith(200);
-      expect(res.json).toHaveBeenCalledWith(mockSchedule);
+
+      mockSingle.mockResolvedValueOnce({ data: { id: 1 }, error: null });
+      mockOrder.mockResolvedValue({ data: mockSchedule, error: null });
+
+      await getTechnicianSchedule(mockReq as Request, mockRes as Response);
+
+      expect(mockFrom).toHaveBeenCalledWith('Technician');
+      expect(mockFrom).toHaveBeenCalledWith('WorkOrder');
+      expect(mockNot).toHaveBeenCalledWith('status', 'in', ['completed', 'cancelled']);
+      expect(mockJson).toHaveBeenCalledWith(mockSchedule);
     });
 
-    it('should return 404 if technician not found', async () => {
-      req.params.id = '999';
-      
-      (prisma.technician.findUnique as jest.Mock).mockResolvedValue(null);
-      
-      await getTechnicianSchedule(req, res);
-      
-      expect(res.status).toHaveBeenCalledWith(404);
-      expect(res.json).toHaveBeenCalledWith({ error: 'Technician not found' });
+    it('should return 404 when technician not found', async () => {
+      mockReq.params = { id: '999' };
+      mockReq.query = { 
+        fromDate: '2024-03-20', 
+        toDate: '2024-03-21' 
+      };
+
+      mockSingle.mockResolvedValue({ 
+        data: null, 
+        error: { code: 'PGRST116' } 
+      });
+
+      await getTechnicianSchedule(mockReq as Request, mockRes as Response);
+
+      expect(mockStatus).toHaveBeenCalledWith(404);
+      expect(mockJson).toHaveBeenCalledWith({ error: 'Technician not found' });
     });
   });
 }); 

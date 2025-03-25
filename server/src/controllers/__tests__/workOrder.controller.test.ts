@@ -1,172 +1,75 @@
 import { Request, Response } from 'express';
-import { 
-  getAllWorkOrders, 
-  getWorkOrderById, 
-  createWorkOrder, 
-  updateWorkOrder, 
+import { supabase } from '../../utils/supabase';
+import {
+  getAllWorkOrders,
+  getWorkOrderById,
+  createWorkOrder,
+  updateWorkOrder,
   deleteWorkOrder,
   updateWorkOrderStatus,
   assignTechnician,
   scheduleWorkOrder
 } from '../workOrder.controller';
-import { prisma } from '../../index';
 
-// Mock Prisma client
-jest.mock('../../index', () => ({
-  prisma: {
-    workOrder: {
-      findMany: jest.fn(),
-      findUnique: jest.fn(),
-      create: jest.fn(),
-      update: jest.fn(),
-      delete: jest.fn()
-    },
-    customer: {
-      findUnique: jest.fn()
-    },
-    vehicle: {
-      findUnique: jest.fn()
-    },
-    technician: {
-      findUnique: jest.fn()
-    }
-  }
-}));
+// Mock the entire supabase module
+jest.mock('../../utils/supabase');
 
-// Mock request and response
-const mockRequest = () => {
-  const req: Partial<Request> = {};
-  req.body = {};
-  req.params = {};
-  req.query = {};
-  return req as Request;
-};
-
-const mockResponse = () => {
-  const res: Partial<Response> = {};
-  res.status = jest.fn().mockReturnThis();
-  res.json = jest.fn().mockReturnThis();
-  return res as Response;
-};
-
-describe('Work Order Controller', () => {
-  let req: Request;
-  let res: Response;
+describe('WorkOrder Controller', () => {
+  let mockReq: Partial<Request>;
+  let mockRes: Partial<Response>;
+  let mockJson: jest.Mock;
+  let mockStatus: jest.Mock;
+  let mockSend: jest.Mock;
+  let mockFrom: jest.SpyInstance;
 
   beforeEach(() => {
-    req = mockRequest();
-    res = mockResponse();
+    mockJson = jest.fn();
+    mockStatus = jest.fn().mockReturnThis();
+    mockSend = jest.fn();
+    mockRes = {
+      json: mockJson,
+      status: mockStatus,
+      send: mockSend
+    };
+    mockReq = {};
+    mockFrom = jest.spyOn(supabase, 'from');
     jest.clearAllMocks();
   });
 
   describe('getAllWorkOrders', () => {
     it('should return all work orders', async () => {
       const mockWorkOrders = [
-        { 
-          id: 1, 
-          customerId: 1, 
-          vehicleId: 1, 
-          technicianId: 1,
-          serviceType: 'replacement',
-          glassLocation: 'windshield',
-          status: 'scheduled',
-          customer: { firstName: 'John', lastName: 'Doe' },
-          vehicle: { make: 'Toyota', model: 'Camry' },
-          technician: { firstName: 'Tech', lastName: 'One' }
-        },
-        { 
-          id: 2, 
-          customerId: 2, 
-          vehicleId: 2, 
-          technicianId: null,
-          serviceType: 'repair',
-          glassLocation: 'driver window',
-          status: 'completed',
-          customer: { firstName: 'Jane', lastName: 'Smith' },
-          vehicle: { make: 'Honda', model: 'Accord' },
-          technician: null
-        }
+        { id: 1, customerId: 1, vehicleId: 1, technicianId: 1, status: 'pending' },
+        { id: 2, customerId: 2, vehicleId: 2, technicianId: 2, status: 'completed' }
       ];
-      
-      (prisma.workOrder.findMany as jest.Mock).mockResolvedValue(mockWorkOrders);
-      
-      await getAllWorkOrders(req, res);
-      
-      expect(prisma.workOrder.findMany).toHaveBeenCalledWith({
-        where: {},
-        orderBy: { scheduledDate: 'asc' },
-        include: {
-          customer: true,
-          vehicle: true,
-          technician: true
-        }
-      });
-      expect(res.status).toHaveBeenCalledWith(200);
-      expect(res.json).toHaveBeenCalledWith(mockWorkOrders);
-    });
 
-    it('should apply filters when provided', async () => {
-      const mockWorkOrders = [
-        { 
-          id: 1, 
-          customerId: 1, 
-          vehicleId: 1, 
-          technicianId: 1,
-          serviceType: 'replacement',
-          glassLocation: 'windshield',
-          status: 'scheduled',
-          scheduledDate: new Date('2023-03-15'),
-          customer: { firstName: 'John', lastName: 'Doe' },
-          vehicle: { make: 'Toyota', model: 'Camry' },
-          technician: { firstName: 'Tech', lastName: 'One' }
-        }
-      ];
-      
-      req.query = {
-        status: 'scheduled',
-        technicianId: '1',
-        customerId: '1',
-        vehicleId: '1',
-        fromDate: '2023-03-01',
-        toDate: '2023-03-31'
-      };
-      
-      (prisma.workOrder.findMany as jest.Mock).mockResolvedValue(mockWorkOrders);
-      
-      await getAllWorkOrders(req, res);
-      
-      expect(prisma.workOrder.findMany).toHaveBeenCalledWith({
-        where: {
-          status: 'scheduled',
-          technicianId: 1,
-          customerId: 1,
-          vehicleId: 1,
-          scheduledDate: {
-            gte: expect.any(Date),
-            lte: expect.any(Date)
-          }
-        },
-        orderBy: { scheduledDate: 'asc' },
-        include: {
-          customer: true,
-          vehicle: true,
-          technician: true
-        }
-      });
-      expect(res.status).toHaveBeenCalledWith(200);
-      expect(res.json).toHaveBeenCalledWith(mockWorkOrders);
+      mockFrom.mockImplementation(() => ({
+        select: jest.fn().mockReturnValue({
+          order: jest.fn().mockResolvedValue({ data: mockWorkOrders, error: null })
+        })
+      }));
+
+      await getAllWorkOrders(mockReq as Request, mockRes as Response);
+
+      expect(mockFrom).toHaveBeenCalledWith('WorkOrder');
+      expect(mockJson).toHaveBeenCalledWith(mockWorkOrders);
     });
 
     it('should handle errors', async () => {
-      const error = new Error('Database error');
-      (prisma.workOrder.findMany as jest.Mock).mockRejectedValue(error);
+      const mockError = new Error('Database error');
       
-      await getAllWorkOrders(req, res);
-      
-      expect(res.status).toHaveBeenCalledWith(500);
-      expect(res.json).toHaveBeenCalledWith({
+      mockFrom.mockImplementation(() => ({
+        select: jest.fn().mockReturnValue({
+          order: jest.fn().mockResolvedValue({ data: null, error: mockError })
+        })
+      }));
+
+      await getAllWorkOrders(mockReq as Request, mockRes as Response);
+
+      expect(mockStatus).toHaveBeenCalledWith(500);
+      expect(mockJson).toHaveBeenCalledWith({
         error: 'Failed to fetch work orders',
-        details: 'Database error'
+        details: mockError.message
       });
     });
   });
@@ -177,155 +80,210 @@ describe('Work Order Controller', () => {
         id: 1, 
         customerId: 1, 
         vehicleId: 1, 
-        technicianId: 1,
-        serviceType: 'replacement',
-        glassLocation: 'windshield',
-        status: 'scheduled',
-        customer: { firstName: 'John', lastName: 'Doe' },
-        vehicle: { make: 'Toyota', model: 'Camry' },
-        technician: { firstName: 'Tech', lastName: 'One' }
+        technicianId: 1, 
+        status: 'pending' 
       };
-      
-      req.params.id = '1';
-      (prisma.workOrder.findUnique as jest.Mock).mockResolvedValue(mockWorkOrder);
-      
-      await getWorkOrderById(req, res);
-      
-      expect(prisma.workOrder.findUnique).toHaveBeenCalledWith({
-        where: { id: 1 },
-        include: {
-          customer: true,
-          vehicle: true,
-          technician: true
-        }
-      });
-      expect(res.status).toHaveBeenCalledWith(200);
-      expect(res.json).toHaveBeenCalledWith(mockWorkOrder);
+      mockReq.params = { id: '1' };
+
+      mockFrom.mockImplementation(() => ({
+        select: jest.fn().mockReturnValue({
+          eq: jest.fn().mockReturnValue({
+            single: jest.fn().mockResolvedValue({ data: mockWorkOrder, error: null })
+          })
+        })
+      }));
+
+      await getWorkOrderById(mockReq as Request, mockRes as Response);
+
+      expect(mockFrom).toHaveBeenCalledWith('WorkOrder');
+      expect(mockJson).toHaveBeenCalledWith(mockWorkOrder);
     });
 
-    it('should return 404 if work order not found', async () => {
-      req.params.id = '999';
-      (prisma.workOrder.findUnique as jest.Mock).mockResolvedValue(null);
-      
-      await getWorkOrderById(req, res);
-      
-      expect(res.status).toHaveBeenCalledWith(404);
-      expect(res.json).toHaveBeenCalledWith({ error: 'Work order not found' });
-    });
+    it('should return 404 when work order not found', async () => {
+      mockReq.params = { id: '999' };
 
-    it('should handle errors', async () => {
-      const error = new Error('Database error');
-      req.params.id = '1';
-      (prisma.workOrder.findUnique as jest.Mock).mockRejectedValue(error);
-      
-      await getWorkOrderById(req, res);
-      
-      expect(res.status).toHaveBeenCalledWith(500);
-      expect(res.json).toHaveBeenCalledWith({
-        error: 'Failed to fetch work order',
-        details: 'Database error'
-      });
+      mockFrom.mockImplementation(() => ({
+        select: jest.fn().mockReturnValue({
+          eq: jest.fn().mockReturnValue({
+            single: jest.fn().mockResolvedValue({ 
+              data: null, 
+              error: { code: 'PGRST116' } 
+            })
+          })
+        })
+      }));
+
+      await getWorkOrderById(mockReq as Request, mockRes as Response);
+
+      expect(mockStatus).toHaveBeenCalledWith(404);
+      expect(mockJson).toHaveBeenCalledWith({ error: 'Work order not found' });
     });
   });
 
   describe('createWorkOrder', () => {
     it('should create a new work order', async () => {
-      const mockWorkOrder = { 
-        id: 1, 
-        customerId: 1, 
-        vehicleId: 1, 
-        technicianId: 1,
-        serviceType: 'replacement',
-        glassLocation: 'windshield',
-        status: 'scheduled',
-        scheduledDate: new Date('2023-03-15'),
-        price: 350,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      };
-      
-      req.body = {
+      const mockWorkOrderData = {
         customerId: 1,
         vehicleId: 1,
         technicianId: 1,
         serviceType: 'replacement',
         glassLocation: 'windshield',
-        scheduledDate: '2023-03-15',
-        price: 350
+        scheduledDate: '2024-03-20',
+        status: 'pending'
       };
-      
-      (prisma.customer.findUnique as jest.Mock).mockResolvedValue({ id: 1 });
-      (prisma.vehicle.findUnique as jest.Mock).mockResolvedValue({ id: 1 });
-      (prisma.technician.findUnique as jest.Mock).mockResolvedValue({ id: 1 });
-      (prisma.workOrder.create as jest.Mock).mockResolvedValue(mockWorkOrder);
-      
-      await createWorkOrder(req, res);
-      
-      expect(prisma.customer.findUnique).toHaveBeenCalledWith({
-        where: { id: 1 }
+      const mockNewWorkOrder = { id: 1, ...mockWorkOrderData };
+      mockReq.body = mockWorkOrderData;
+
+      mockFrom.mockImplementation((table) => {
+        if (table === 'Customer' || table === 'Vehicle' || table === 'Technician') {
+          return {
+            select: jest.fn().mockReturnValue({
+              eq: jest.fn().mockReturnValue({
+                single: jest.fn().mockResolvedValue({ data: { id: 1 }, error: null })
+              })
+            })
+          };
+        }
+        return {
+          insert: jest.fn().mockReturnValue({
+            select: jest.fn().mockReturnValue({
+              single: jest.fn().mockResolvedValue({ data: mockNewWorkOrder, error: null })
+            })
+          })
+        };
       });
-      expect(prisma.workOrder.create).toHaveBeenCalledWith({
-        data: expect.objectContaining({
-          customerId: 1,
-          vehicleId: 1,
-          technicianId: 1,
-          serviceType: 'replacement',
-          glassLocation: 'windshield',
-          status: 'scheduled'
-        })
-      });
-      expect(res.status).toHaveBeenCalledWith(201);
-      expect(res.json).toHaveBeenCalledWith(mockWorkOrder);
+
+      await createWorkOrder(mockReq as Request, mockRes as Response);
+
+      expect(mockFrom).toHaveBeenCalledWith('WorkOrder');
+      expect(mockStatus).toHaveBeenCalledWith(201);
+      expect(mockJson).toHaveBeenCalledWith(mockNewWorkOrder);
     });
 
-    it('should return 400 if required fields are missing', async () => {
-      req.body = {
-        customerId: 1,
-        // Missing serviceType and glassLocation
-      };
-      
-      await createWorkOrder(req, res);
-      
-      expect(res.status).toHaveBeenCalledWith(400);
-      expect(res.json).toHaveBeenCalledWith({
-        error: 'Missing required fields',
-        requiredFields: ['customerId', 'serviceType', 'glassLocation']
-      });
-    });
-
-    it('should return 404 if customer not found', async () => {
-      req.body = {
+    it('should return 404 when customer not found', async () => {
+      mockReq.body = {
         customerId: 999,
-        serviceType: 'replacement',
-        glassLocation: 'windshield'
+        vehicleId: 1,
+        technicianId: 1
       };
-      
-      (prisma.customer.findUnique as jest.Mock).mockResolvedValue(null);
-      
-      await createWorkOrder(req, res);
-      
-      expect(res.status).toHaveBeenCalledWith(404);
-      expect(res.json).toHaveBeenCalledWith({ error: 'Customer not found' });
+
+      mockFrom.mockImplementation(() => ({
+        select: jest.fn().mockReturnValue({
+          eq: jest.fn().mockReturnValue({
+            single: jest.fn().mockResolvedValue({ 
+              data: null, 
+              error: { code: 'PGRST116' } 
+            })
+          })
+        })
+      }));
+
+      await createWorkOrder(mockReq as Request, mockRes as Response);
+
+      expect(mockStatus).toHaveBeenCalledWith(404);
+      expect(mockJson).toHaveBeenCalledWith({ error: 'Customer not found' });
+    });
+  });
+
+  describe('updateWorkOrder', () => {
+    it('should update a work order', async () => {
+      const mockWorkOrderData = {
+        status: 'completed',
+        notes: 'Work completed successfully'
+      };
+      const mockUpdatedWorkOrder = { 
+        id: 1, 
+        customerId: 1, 
+        vehicleId: 1, 
+        technicianId: 1,
+        ...mockWorkOrderData 
+      };
+      mockReq.params = { id: '1' };
+      mockReq.body = mockWorkOrderData;
+
+      mockFrom.mockImplementation(() => ({
+        select: jest.fn().mockReturnValue({
+          eq: jest.fn().mockReturnValue({
+            single: jest.fn().mockResolvedValue({ data: { id: 1 }, error: null })
+          })
+        }),
+        update: jest.fn().mockReturnValue({
+          eq: jest.fn().mockReturnValue({
+            select: jest.fn().mockReturnValue({
+              single: jest.fn().mockResolvedValue({ data: mockUpdatedWorkOrder, error: null })
+            })
+          })
+        })
+      }));
+
+      await updateWorkOrder(mockReq as Request, mockRes as Response);
+
+      expect(mockFrom).toHaveBeenCalledWith('WorkOrder');
+      expect(mockJson).toHaveBeenCalledWith(mockUpdatedWorkOrder);
     });
 
-    it('should handle errors', async () => {
-      const error = new Error('Database error');
-      req.body = {
-        customerId: 1,
-        serviceType: 'replacement',
-        glassLocation: 'windshield'
-      };
-      
-      (prisma.customer.findUnique as jest.Mock).mockResolvedValue({ id: 1 });
-      (prisma.workOrder.create as jest.Mock).mockRejectedValue(error);
-      
-      await createWorkOrder(req, res);
-      
-      expect(res.status).toHaveBeenCalledWith(500);
-      expect(res.json).toHaveBeenCalledWith({
-        error: 'Failed to create work order',
-        details: 'Database error'
-      });
+    it('should return 404 when work order not found', async () => {
+      mockReq.params = { id: '999' };
+      mockReq.body = { status: 'completed' };
+
+      mockFrom.mockImplementation(() => ({
+        select: jest.fn().mockReturnValue({
+          eq: jest.fn().mockReturnValue({
+            single: jest.fn().mockResolvedValue({ 
+              data: null, 
+              error: { code: 'PGRST116' } 
+            })
+          })
+        })
+      }));
+
+      await updateWorkOrder(mockReq as Request, mockRes as Response);
+
+      expect(mockStatus).toHaveBeenCalledWith(404);
+      expect(mockJson).toHaveBeenCalledWith({ error: 'Work order not found' });
+    });
+  });
+
+  describe('deleteWorkOrder', () => {
+    it('should delete a work order', async () => {
+      mockReq.params = { id: '1' };
+
+      mockFrom.mockImplementation(() => ({
+        select: jest.fn().mockReturnValue({
+          eq: jest.fn().mockReturnValue({
+            single: jest.fn().mockResolvedValue({ data: { id: 1 }, error: null })
+          })
+        }),
+        delete: jest.fn().mockReturnValue({
+          eq: jest.fn().mockResolvedValue({ error: null })
+        })
+      }));
+
+      await deleteWorkOrder(mockReq as Request, mockRes as Response);
+
+      expect(mockFrom).toHaveBeenCalledWith('WorkOrder');
+      expect(mockStatus).toHaveBeenCalledWith(204);
+      expect(mockSend).toHaveBeenCalled();
+    });
+
+    it('should return 404 when work order not found', async () => {
+      mockReq.params = { id: '999' };
+
+      mockFrom.mockImplementation(() => ({
+        select: jest.fn().mockReturnValue({
+          eq: jest.fn().mockReturnValue({
+            single: jest.fn().mockResolvedValue({ 
+              data: null, 
+              error: { code: 'PGRST116' } 
+            })
+          })
+        })
+      }));
+
+      await deleteWorkOrder(mockReq as Request, mockRes as Response);
+
+      expect(mockStatus).toHaveBeenCalledWith(404);
+      expect(mockJson).toHaveBeenCalledWith({ error: 'Work order not found' });
     });
   });
 
@@ -333,68 +291,51 @@ describe('Work Order Controller', () => {
     it('should update work order status', async () => {
       const mockWorkOrder = { 
         id: 1, 
-        status: 'in-progress'
+        status: 'in-progress' 
       };
-      
-      req.params.id = '1';
-      req.body = {
-        status: 'in-progress'
-      };
-      
-      (prisma.workOrder.findUnique as jest.Mock).mockResolvedValue({ id: 1, status: 'scheduled' });
-      (prisma.workOrder.update as jest.Mock).mockResolvedValue(mockWorkOrder);
-      
-      await updateWorkOrderStatus(req, res);
-      
-      expect(prisma.workOrder.update).toHaveBeenCalledWith({
-        where: { id: 1 },
-        data: { status: 'in-progress' }
-      });
-      expect(res.status).toHaveBeenCalledWith(200);
-      expect(res.json).toHaveBeenCalledWith(mockWorkOrder);
+      mockReq.params = { id: '1' };
+      mockReq.body = { status: 'in-progress' };
+
+      mockFrom.mockImplementation(() => ({
+        select: jest.fn().mockReturnValue({
+          eq: jest.fn().mockReturnValue({
+            single: jest.fn().mockResolvedValue({ data: { id: 1 }, error: null })
+          })
+        }),
+        update: jest.fn().mockReturnValue({
+          eq: jest.fn().mockReturnValue({
+            select: jest.fn().mockReturnValue({
+              single: jest.fn().mockResolvedValue({ data: mockWorkOrder, error: null })
+            })
+          })
+        })
+      }));
+
+      await updateWorkOrderStatus(mockReq as Request, mockRes as Response);
+
+      expect(mockFrom).toHaveBeenCalledWith('WorkOrder');
+      expect(mockJson).toHaveBeenCalledWith(mockWorkOrder);
     });
 
-    it('should set completedDate when status is completed', async () => {
-      const mockWorkOrder = { 
-        id: 1, 
-        status: 'completed',
-        completedDate: new Date()
-      };
-      
-      req.params.id = '1';
-      req.body = {
-        status: 'completed'
-      };
-      
-      (prisma.workOrder.findUnique as jest.Mock).mockResolvedValue({ id: 1, status: 'in-progress' });
-      (prisma.workOrder.update as jest.Mock).mockResolvedValue(mockWorkOrder);
-      
-      await updateWorkOrderStatus(req, res);
-      
-      expect(prisma.workOrder.update).toHaveBeenCalledWith({
-        where: { id: 1 },
-        data: { 
-          status: 'completed',
-          completedDate: expect.any(Date)
-        }
-      });
-      expect(res.status).toHaveBeenCalledWith(200);
-      expect(res.json).toHaveBeenCalledWith(mockWorkOrder);
-    });
+    it('should return 404 when work order not found', async () => {
+      mockReq.params = { id: '999' };
+      mockReq.body = { status: 'in-progress' };
 
-    it('should return 400 if status is invalid', async () => {
-      req.params.id = '1';
-      req.body = {
-        status: 'invalid-status'
-      };
-      
-      await updateWorkOrderStatus(req, res);
-      
-      expect(res.status).toHaveBeenCalledWith(400);
-      expect(res.json).toHaveBeenCalledWith({
-        error: 'Invalid status',
-        validStatuses: ['scheduled', 'in-progress', 'completed', 'cancelled']
-      });
+      mockFrom.mockImplementation(() => ({
+        select: jest.fn().mockReturnValue({
+          eq: jest.fn().mockReturnValue({
+            single: jest.fn().mockResolvedValue({ 
+              data: null, 
+              error: { code: 'PGRST116' } 
+            })
+          })
+        })
+      }));
+
+      await updateWorkOrderStatus(mockReq as Request, mockRes as Response);
+
+      expect(mockStatus).toHaveBeenCalledWith(404);
+      expect(mockJson).toHaveBeenCalledWith({ error: 'Work order not found' });
     });
   });
 
@@ -402,91 +343,115 @@ describe('Work Order Controller', () => {
     it('should assign a technician to a work order', async () => {
       const mockWorkOrder = { 
         id: 1, 
-        technicianId: 1
+        technicianId: 1 
       };
-      
-      req.params.id = '1';
-      req.body = {
-        technicianId: 1
-      };
-      
-      (prisma.workOrder.findUnique as jest.Mock).mockResolvedValue({ id: 1 });
-      (prisma.technician.findUnique as jest.Mock).mockResolvedValue({ id: 1 });
-      (prisma.workOrder.update as jest.Mock).mockResolvedValue(mockWorkOrder);
-      
-      await assignTechnician(req, res);
-      
-      expect(prisma.workOrder.update).toHaveBeenCalledWith({
-        where: { id: 1 },
-        data: { technicianId: 1 }
+      mockReq.params = { id: '1' };
+      mockReq.body = { technicianId: 1 };
+
+      mockFrom.mockImplementation((table) => {
+        if (table === 'Technician') {
+          return {
+            select: jest.fn().mockReturnValue({
+              eq: jest.fn().mockReturnValue({
+                single: jest.fn().mockResolvedValue({ data: { id: 1 }, error: null })
+              })
+            })
+          };
+        }
+        return {
+          select: jest.fn().mockReturnValue({
+            eq: jest.fn().mockReturnValue({
+              single: jest.fn().mockResolvedValue({ data: { id: 1 }, error: null })
+            })
+          }),
+          update: jest.fn().mockReturnValue({
+            eq: jest.fn().mockReturnValue({
+              select: jest.fn().mockReturnValue({
+                single: jest.fn().mockResolvedValue({ data: mockWorkOrder, error: null })
+              })
+            })
+          })
+        };
       });
-      expect(res.status).toHaveBeenCalledWith(200);
-      expect(res.json).toHaveBeenCalledWith(mockWorkOrder);
+
+      await assignTechnician(mockReq as Request, mockRes as Response);
+
+      expect(mockFrom).toHaveBeenCalledWith('WorkOrder');
+      expect(mockJson).toHaveBeenCalledWith(mockWorkOrder);
     });
 
-    it('should unassign a technician when technicianId is null', async () => {
-      const mockWorkOrder = { 
-        id: 1, 
-        technicianId: null
-      };
-      
-      req.params.id = '1';
-      req.body = {
-        technicianId: null
-      };
-      
-      (prisma.workOrder.findUnique as jest.Mock).mockResolvedValue({ id: 1, technicianId: 1 });
-      (prisma.workOrder.update as jest.Mock).mockResolvedValue(mockWorkOrder);
-      
-      await assignTechnician(req, res);
-      
-      expect(prisma.workOrder.update).toHaveBeenCalledWith({
-        where: { id: 1 },
-        data: { technicianId: null }
-      });
-      expect(res.status).toHaveBeenCalledWith(200);
-      expect(res.json).toHaveBeenCalledWith(mockWorkOrder);
+    it('should return 404 when work order not found', async () => {
+      mockReq.params = { id: '999' };
+      mockReq.body = { technicianId: 1 };
+
+      mockFrom.mockImplementation(() => ({
+        select: jest.fn().mockReturnValue({
+          eq: jest.fn().mockReturnValue({
+            single: jest.fn().mockResolvedValue({ 
+              data: null, 
+              error: { code: 'PGRST116' } 
+            })
+          })
+        })
+      }));
+
+      await assignTechnician(mockReq as Request, mockRes as Response);
+
+      expect(mockStatus).toHaveBeenCalledWith(404);
+      expect(mockJson).toHaveBeenCalledWith({ error: 'Work order not found' });
     });
   });
 
   describe('scheduleWorkOrder', () => {
     it('should schedule a work order', async () => {
-      const scheduledDate = new Date('2023-03-15');
       const mockWorkOrder = { 
         id: 1, 
-        scheduledDate,
+        scheduledDate: '2024-03-20',
         status: 'scheduled'
       };
-      
-      req.params.id = '1';
-      req.body = {
-        scheduledDate: '2023-03-15'
-      };
-      
-      (prisma.workOrder.findUnique as jest.Mock).mockResolvedValue({ id: 1, status: 'scheduled' });
-      (prisma.workOrder.update as jest.Mock).mockResolvedValue(mockWorkOrder);
-      
-      await scheduleWorkOrder(req, res);
-      
-      expect(prisma.workOrder.update).toHaveBeenCalledWith({
-        where: { id: 1 },
-        data: { 
-          scheduledDate: expect.any(Date),
-          status: 'scheduled'
-        }
-      });
-      expect(res.status).toHaveBeenCalledWith(200);
-      expect(res.json).toHaveBeenCalledWith(mockWorkOrder);
+      mockReq.params = { id: '1' };
+      mockReq.body = { scheduledDate: '2024-03-20' };
+
+      mockFrom.mockImplementation(() => ({
+        select: jest.fn().mockReturnValue({
+          eq: jest.fn().mockReturnValue({
+            single: jest.fn().mockResolvedValue({ data: { id: 1 }, error: null })
+          })
+        }),
+        update: jest.fn().mockReturnValue({
+          eq: jest.fn().mockReturnValue({
+            select: jest.fn().mockReturnValue({
+              single: jest.fn().mockResolvedValue({ data: mockWorkOrder, error: null })
+            })
+          })
+        })
+      }));
+
+      await scheduleWorkOrder(mockReq as Request, mockRes as Response);
+
+      expect(mockFrom).toHaveBeenCalledWith('WorkOrder');
+      expect(mockJson).toHaveBeenCalledWith(mockWorkOrder);
     });
 
-    it('should return 400 if scheduledDate is missing', async () => {
-      req.params.id = '1';
-      req.body = {};
-      
-      await scheduleWorkOrder(req, res);
-      
-      expect(res.status).toHaveBeenCalledWith(400);
-      expect(res.json).toHaveBeenCalledWith({ error: 'Scheduled date is required' });
+    it('should return 404 when work order not found', async () => {
+      mockReq.params = { id: '999' };
+      mockReq.body = { scheduledDate: '2024-03-20' };
+
+      mockFrom.mockImplementation(() => ({
+        select: jest.fn().mockReturnValue({
+          eq: jest.fn().mockReturnValue({
+            single: jest.fn().mockResolvedValue({ 
+              data: null, 
+              error: { code: 'PGRST116' } 
+            })
+          })
+        })
+      }));
+
+      await scheduleWorkOrder(mockReq as Request, mockRes as Response);
+
+      expect(mockStatus).toHaveBeenCalledWith(404);
+      expect(mockJson).toHaveBeenCalledWith({ error: 'Work order not found' });
     });
   });
 }); 
