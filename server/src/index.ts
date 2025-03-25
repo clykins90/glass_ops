@@ -1,49 +1,48 @@
 import express from 'express';
 import cors from 'cors';
-import helmet from 'helmet';
 import morgan from 'morgan';
 import dotenv from 'dotenv';
-import { PrismaClient } from '@prisma/client';
+import routes from './routes';
+import helmet from 'helmet';
+import path from 'path';
 
-// Import routes
-import customerRoutes from './routes/customer.routes';
-import vehicleRoutes from './routes/vehicle.routes';
-import workOrderRoutes from './routes/workOrder.routes';
-import technicianRoutes from './routes/technician.routes';
-import dashboardRoutes from './routes/dashboard.routes';
+// Load environment variables based on NODE_ENV
+const environment = process.env.NODE_ENV || 'development';
+const envFile = path.resolve(process.cwd(), `.env.${environment}`);
 
-// Load environment variables
-dotenv.config();
+console.log(`Loading environment from: ${envFile}`);
+dotenv.config({ path: envFile });
 
-// Initialize Express app
+// Create Express app
 const app = express();
+
+// Get port from environment variables
 const port = process.env.PORT || 3001;
 const apiPrefix = process.env.API_PREFIX || '/api';
 
-// Initialize Prisma client
-export const prisma = new PrismaClient();
-
 // Middleware
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
+  origin: (origin, callback) => {
+    const allowedOrigins = (process.env.CORS_ORIGIN || '').split(',');
+    
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      return callback(null, true);
+    } else {
+      console.warn(`Origin ${origin} not allowed by CORS policy`);
+      return callback(null, false);
+    }
+  },
   credentials: true
 }));
-app.use(helmet());
-app.use(morgan('dev'));
 app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(morgan('dev'));
+app.use(helmet());
 
 // Routes
-app.use(`${apiPrefix}/customers`, customerRoutes);
-app.use(`${apiPrefix}/vehicles`, vehicleRoutes);
-app.use(`${apiPrefix}/workorders`, workOrderRoutes);
-app.use(`${apiPrefix}/technicians`, technicianRoutes);
-app.use(`${apiPrefix}/dashboard`, dashboardRoutes);
-
-// Health check route
-app.get('/health', (req, res) => {
-  res.status(200).json({ status: 'ok', message: 'Server is running' });
-});
+app.use(apiPrefix, routes);
 
 // Error handling middleware
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
@@ -55,17 +54,21 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
 });
 
 // Start server
-app.listen(port, () => {
+const server = app.listen(port, () => {
   console.log(`Server running on port ${port}`);
 });
 
-// Handle process termination
-process.on('SIGINT', async () => {
-  await prisma.$disconnect();
-  process.exit(0);
+// Handle shutdown gracefully
+process.on('SIGTERM', () => {
+  console.log('SIGTERM signal received: closing HTTP server');
+  server.close(() => {
+    console.log('HTTP server closed');
+  });
 });
 
-process.on('SIGTERM', async () => {
-  await prisma.$disconnect();
-  process.exit(0);
+process.on('SIGINT', () => {
+  console.log('SIGINT signal received: closing HTTP server');
+  server.close(() => {
+    console.log('HTTP server closed');
+  });
 }); 

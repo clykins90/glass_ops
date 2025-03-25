@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { prisma } from '../index';
+import { supabase } from '../utils/supabase';
 
 /**
  * Get all work orders
@@ -7,60 +7,24 @@ import { prisma } from '../index';
  */
 export const getAllWorkOrders = async (req: Request, res: Response) => {
   try {
-    // Extract query parameters for filtering
-    const { status, technicianId, fromDate, toDate, customerId, vehicleId } = req.query;
-    
-    // Build filter object
-    const filter: any = {};
-    
-    if (status) {
-      filter.status = status as string;
-    }
-    
-    if (technicianId) {
-      filter.technicianId = Number(technicianId);
-    }
-    
-    if (customerId) {
-      filter.customerId = Number(customerId);
-    }
-    
-    if (vehicleId) {
-      filter.vehicleId = Number(vehicleId);
-    }
-    
-    // Date range filtering
-    if (fromDate || toDate) {
-      filter.scheduledDate = {};
-      
-      if (fromDate) {
-        filter.scheduledDate.gte = new Date(fromDate as string);
-      }
-      
-      if (toDate) {
-        filter.scheduledDate.lte = new Date(toDate as string);
-      }
-    }
-    
-    // Get work orders with filtering
-    const workOrders = await prisma.workOrder.findMany({
-      where: filter,
-      orderBy: {
-        scheduledDate: 'asc'
-      },
-      include: {
-        customer: true,
-        vehicle: true,
-        technician: true
-      }
-    });
-    
-    return res.status(200).json(workOrders);
-  } catch (error) {
+    const { data: workOrders, error } = await supabase
+      .from('WorkOrder')
+      .select(`
+        *,
+        customer:customerId (*),
+        vehicle:vehicleId (*),
+        technician:technicianId (*)
+      `)
+      .order('createdAt', { ascending: false });
+
+    if (error) throw error;
+
+    res.json(workOrders);
+  } catch (error: any) {
     console.error('Error fetching work orders:', error);
-    return res.status(500).json({ 
+    res.status(500).json({
       error: 'Failed to fetch work orders',
-      details: error instanceof Error ? error.message : 'Unknown error'
+      details: error.message
     });
   }
 };
@@ -72,26 +36,32 @@ export const getAllWorkOrders = async (req: Request, res: Response) => {
 export const getWorkOrderById = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    
-    const workOrder = await prisma.workOrder.findUnique({
-      where: { id: Number(id) },
-      include: {
-        customer: true,
-        vehicle: true,
-        technician: true
+    const { data: workOrder, error } = await supabase
+      .from('WorkOrder')
+      .select(`
+        *,
+        customer:customerId (*),
+        vehicle:vehicleId (*),
+        technician:technicianId (*)
+      `)
+      .eq('id', id)
+      .single();
+
+    if (error) {
+      if (error.code === 'PGRST116') {
+        return res.status(404).json({
+          error: 'Work order not found'
+        });
       }
-    });
-    
-    if (!workOrder) {
-      return res.status(404).json({ error: 'Work order not found' });
+      throw error;
     }
-    
-    return res.status(200).json(workOrder);
-  } catch (error) {
-    console.error(`Error fetching work order ${req.params.id}:`, error);
-    return res.status(500).json({ 
+
+    res.json(workOrder);
+  } catch (error: any) {
+    console.error('Error fetching work order:', error);
+    res.status(500).json({
       error: 'Failed to fetch work order',
-      details: error instanceof Error ? error.message : 'Unknown error'
+      details: error.message
     });
   }
 };
@@ -102,90 +72,75 @@ export const getWorkOrderById = async (req: Request, res: Response) => {
  */
 export const createWorkOrder = async (req: Request, res: Response) => {
   try {
-    const { 
-      customerId, 
-      vehicleId, 
-      technicianId, 
-      serviceType, 
-      glassLocation, 
-      scheduledDate,
-      status,
-      price,
-      paymentType,
-      paymentStatus,
-      insuranceClaim,
-      insuranceInfo,
-      warrantyInfo,
-      materialsRequired,
-      notes
-    } = req.body;
-    
-    // Validate required fields
-    if (!customerId || !serviceType || !glassLocation) {
-      return res.status(400).json({ 
-        error: 'Missing required fields', 
-        requiredFields: ['customerId', 'serviceType', 'glassLocation']
-      });
-    }
-    
+    const workOrderData = req.body;
+
     // Check if customer exists
-    const customer = await prisma.customer.findUnique({
-      where: { id: Number(customerId) }
-    });
-    
-    if (!customer) {
-      return res.status(404).json({ error: 'Customer not found' });
-    }
-    
-    // Check if vehicle exists if provided
-    if (vehicleId) {
-      const vehicle = await prisma.vehicle.findUnique({
-        where: { id: Number(vehicleId) }
-      });
-      
-      if (!vehicle) {
-        return res.status(404).json({ error: 'Vehicle not found' });
+    const { data: customer, error: customerError } = await supabase
+      .from('Customer')
+      .select()
+      .eq('id', workOrderData.customerId)
+      .single();
+
+    if (customerError) {
+      if (customerError.code === 'PGRST116') {
+        return res.status(404).json({
+          error: 'Customer not found'
+        });
       }
+      throw customerError;
     }
-    
-    // Check if technician exists if provided
-    if (technicianId) {
-      const technician = await prisma.technician.findUnique({
-        where: { id: Number(technicianId) }
-      });
-      
-      if (!technician) {
-        return res.status(404).json({ error: 'Technician not found' });
+
+    // Check if vehicle exists
+    const { data: vehicle, error: vehicleError } = await supabase
+      .from('Vehicle')
+      .select()
+      .eq('id', workOrderData.vehicleId)
+      .single();
+
+    if (vehicleError) {
+      if (vehicleError.code === 'PGRST116') {
+        return res.status(404).json({
+          error: 'Vehicle not found'
+        });
       }
+      throw vehicleError;
     }
-    
-    // Create work order
-    const workOrder = await prisma.workOrder.create({
-      data: {
-        customerId: Number(customerId),
-        vehicleId: vehicleId ? Number(vehicleId) : undefined,
-        technicianId: technicianId ? Number(technicianId) : undefined,
-        serviceType,
-        glassLocation,
-        scheduledDate: scheduledDate ? new Date(scheduledDate) : undefined,
-        status: status || 'scheduled',
-        price: price ? Number(price) : undefined,
-        paymentType,
-        paymentStatus,
-        insuranceClaim: insuranceClaim || false,
-        insuranceInfo,
-        warrantyInfo,
-        materialsRequired,
-        notes
+
+    // Check if technician exists
+    const { data: technician, error: technicianError } = await supabase
+      .from('Technician')
+      .select()
+      .eq('id', workOrderData.technicianId)
+      .single();
+
+    if (technicianError) {
+      if (technicianError.code === 'PGRST116') {
+        return res.status(404).json({
+          error: 'Technician not found'
+        });
       }
-    });
-    
-    return res.status(201).json(workOrder);
-  } catch (error) {
+      throw technicianError;
+    }
+
+    const { data: newWorkOrder, error } = await supabase
+      .from('WorkOrder')
+      .insert([workOrderData])
+      .select(`
+        *,
+        customer:customerId (*),
+        vehicle:vehicleId (*),
+        technician:technicianId (*)
+      `)
+      .single();
+
+    if (error) throw error;
+
+    res.status(201).json(newWorkOrder);
+  } catch (error: any) {
     console.error('Error creating work order:', error);
-    return res.status(500).json({ 
+    res.status(500).json({
       error: 'Failed to create work order',
-      details: error instanceof Error ? error.message : 'Unknown error'
+      details: error.message
     });
   }
 };
@@ -197,98 +152,98 @@ export const createWorkOrder = async (req: Request, res: Response) => {
 export const updateWorkOrder = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { 
-      customerId, 
-      vehicleId, 
-      technicianId, 
-      serviceType, 
-      glassLocation, 
-      scheduledDate,
-      completedDate,
-      status,
-      price,
-      paymentType,
-      paymentStatus,
-      insuranceClaim,
-      insuranceInfo,
-      warrantyInfo,
-      materialsRequired,
-      materialsUsed,
-      notes
-    } = req.body;
-    
+    const workOrderData = req.body;
+
     // Check if work order exists
-    const existingWorkOrder = await prisma.workOrder.findUnique({
-      where: { id: Number(id) }
-    });
-    
-    if (!existingWorkOrder) {
-      return res.status(404).json({ error: 'Work order not found' });
+    const { data: existingWorkOrder, error: checkError } = await supabase
+      .from('WorkOrder')
+      .select()
+      .eq('id', id)
+      .single();
+
+    if (checkError) {
+      if (checkError.code === 'PGRST116') {
+        return res.status(404).json({
+          error: 'Work order not found'
+        });
+      }
+      throw checkError;
     }
-    
-    // Check if customer exists if provided
-    if (customerId) {
-      const customer = await prisma.customer.findUnique({
-        where: { id: Number(customerId) }
-      });
-      
-      if (!customer) {
-        return res.status(404).json({ error: 'Customer not found' });
+
+    // If customerId is being updated, check if new customer exists
+    if (workOrderData.customerId) {
+      const { data: customer, error: customerError } = await supabase
+        .from('Customer')
+        .select()
+        .eq('id', workOrderData.customerId)
+        .single();
+
+      if (customerError) {
+        if (customerError.code === 'PGRST116') {
+          return res.status(404).json({
+            error: 'Customer not found'
+          });
+        }
+        throw customerError;
       }
     }
-    
-    // Check if vehicle exists if provided
-    if (vehicleId) {
-      const vehicle = await prisma.vehicle.findUnique({
-        where: { id: Number(vehicleId) }
-      });
-      
-      if (!vehicle) {
-        return res.status(404).json({ error: 'Vehicle not found' });
+
+    // If vehicleId is being updated, check if new vehicle exists
+    if (workOrderData.vehicleId) {
+      const { data: vehicle, error: vehicleError } = await supabase
+        .from('Vehicle')
+        .select()
+        .eq('id', workOrderData.vehicleId)
+        .single();
+
+      if (vehicleError) {
+        if (vehicleError.code === 'PGRST116') {
+          return res.status(404).json({
+            error: 'Vehicle not found'
+          });
+        }
+        throw vehicleError;
       }
     }
-    
-    // Check if technician exists if provided
-    if (technicianId) {
-      const technician = await prisma.technician.findUnique({
-        where: { id: Number(technicianId) }
-      });
-      
-      if (!technician) {
-        return res.status(404).json({ error: 'Technician not found' });
+
+    // If technicianId is being updated, check if new technician exists
+    if (workOrderData.technicianId) {
+      const { data: technician, error: technicianError } = await supabase
+        .from('Technician')
+        .select()
+        .eq('id', workOrderData.technicianId)
+        .single();
+
+      if (technicianError) {
+        if (technicianError.code === 'PGRST116') {
+          return res.status(404).json({
+            error: 'Technician not found'
+          });
+        }
+        throw technicianError;
       }
     }
-    
-    // Update work order
-    const updatedWorkOrder = await prisma.workOrder.update({
-      where: { id: Number(id) },
-      data: {
-        customerId: customerId ? Number(customerId) : undefined,
-        vehicleId: vehicleId !== undefined ? (vehicleId ? Number(vehicleId) : null) : undefined,
-        technicianId: technicianId !== undefined ? (technicianId ? Number(technicianId) : null) : undefined,
-        serviceType,
-        glassLocation,
-        scheduledDate: scheduledDate ? new Date(scheduledDate) : undefined,
-        completedDate: completedDate ? new Date(completedDate) : undefined,
-        status,
-        price: price !== undefined ? Number(price) : undefined,
-        paymentType,
-        paymentStatus,
-        insuranceClaim,
-        insuranceInfo,
-        warrantyInfo,
-        materialsRequired,
-        materialsUsed,
-        notes
-      }
-    });
-    
-    return res.status(200).json(updatedWorkOrder);
-  } catch (error) {
-    console.error(`Error updating work order ${req.params.id}:`, error);
-    return res.status(500).json({ 
+
+    const { data: updatedWorkOrder, error } = await supabase
+      .from('WorkOrder')
+      .update(workOrderData)
+      .eq('id', id)
+      .select(`
+        *,
+        customer:customerId (*),
+        vehicle:vehicleId (*),
+        technician:technicianId (*)
+      `)
+      .single();
+
+    if (error) throw error;
+
+    res.json(updatedWorkOrder);
+  } catch (error: any) {
+    console.error('Error updating work order:', error);
+    res.status(500).json({
       error: 'Failed to update work order',
-      details: error instanceof Error ? error.message : 'Unknown error'
+      details: error.message
     });
   }
 };
@@ -300,27 +255,36 @@ export const updateWorkOrder = async (req: Request, res: Response) => {
 export const deleteWorkOrder = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    
+
     // Check if work order exists
-    const existingWorkOrder = await prisma.workOrder.findUnique({
-      where: { id: Number(id) }
-    });
-    
-    if (!existingWorkOrder) {
-      return res.status(404).json({ error: 'Work order not found' });
+    const { data: existingWorkOrder, error: checkError } = await supabase
+      .from('WorkOrder')
+      .select()
+      .eq('id', id)
+      .single();
+
+    if (checkError) {
+      if (checkError.code === 'PGRST116') {
+        return res.status(404).json({
+          error: 'Work order not found'
+        });
+      }
+      throw checkError;
     }
-    
-    // Delete work order
-    await prisma.workOrder.delete({
-      where: { id: Number(id) }
-    });
-    
-    return res.status(200).json({ message: 'Work order deleted successfully' });
-  } catch (error) {
-    console.error(`Error deleting work order ${req.params.id}:`, error);
-    return res.status(500).json({ 
+
+    const { error } = await supabase
+      .from('WorkOrder')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
+
+    res.status(204).send();
+  } catch (error: any) {
+    console.error('Error deleting work order:', error);
+    res.status(500).json({
       error: 'Failed to delete work order',
-      details: error instanceof Error ? error.message : 'Unknown error'
+      details: error.message
     });
   }
 };
@@ -344,12 +308,25 @@ export const updateWorkOrderStatus = async (req: Request, res: Response) => {
     }
     
     // Check if work order exists
-    const existingWorkOrder = await prisma.workOrder.findUnique({
-      where: { id: Number(id) }
-    });
+    const { data: existingWorkOrder, error: checkError } = await supabase
+      .from('WorkOrder')
+      .select()
+      .eq('id', id)
+      .single();
+    
+    if (checkError) {
+      if (checkError.code === 'PGRST116') {
+        return res.status(404).json({
+          error: 'Work order not found'
+        });
+      }
+      throw checkError;
+    }
     
     if (!existingWorkOrder) {
-      return res.status(404).json({ error: 'Work order not found' });
+      return res.status(404).json({
+        error: 'Work order not found'
+      });
     }
     
     // Update data object
@@ -361,17 +338,26 @@ export const updateWorkOrderStatus = async (req: Request, res: Response) => {
     }
     
     // Update work order status
-    const updatedWorkOrder = await prisma.workOrder.update({
-      where: { id: Number(id) },
-      data: updateData
-    });
+    const { data: updatedWorkOrder, error } = await supabase
+      .from('WorkOrder')
+      .update(updateData)
+      .eq('id', id)
+      .select(`
+        *,
+        customer:customerId (*),
+        vehicle:vehicleId (*),
+        technician:technicianId (*)
+      `)
+      .single();
     
-    return res.status(200).json(updatedWorkOrder);
-  } catch (error) {
+    if (error) throw error;
+    
+    res.status(200).json(updatedWorkOrder);
+  } catch (error: any) {
     console.error(`Error updating work order status ${req.params.id}:`, error);
-    return res.status(500).json({ 
+    res.status(500).json({ 
       error: 'Failed to update work order status',
-      details: error instanceof Error ? error.message : 'Unknown error'
+      details: error.message
     });
   }
 };
@@ -386,45 +372,81 @@ export const assignTechnician = async (req: Request, res: Response) => {
     const { technicianId } = req.body;
     
     // Check if work order exists
-    const existingWorkOrder = await prisma.workOrder.findUnique({
-      where: { id: Number(id) }
-    });
+    const { data: existingWorkOrder, error: checkError } = await supabase
+      .from('WorkOrder')
+      .select()
+      .eq('id', id)
+      .single();
+    
+    if (checkError) {
+      if (checkError.code === 'PGRST116') {
+        return res.status(404).json({
+          error: 'Work order not found'
+        });
+      }
+      throw checkError;
+    }
     
     if (!existingWorkOrder) {
-      return res.status(404).json({ error: 'Work order not found' });
+      return res.status(404).json({
+        error: 'Work order not found'
+      });
     }
     
     // If technicianId is null, unassign technician
     if (technicianId === null) {
-      const updatedWorkOrder = await prisma.workOrder.update({
-        where: { id: Number(id) },
-        data: { technicianId: null }
-      });
+      const { data: updatedWorkOrder, error } = await supabase
+        .from('WorkOrder')
+        .update({ technicianId: null })
+        .eq('id', id)
+        .select(`
+          *,
+          customer:customerId (*),
+          vehicle:vehicleId (*),
+          technician:technicianId (*)
+        `)
+        .single();
+      
+      if (error) throw error;
       
       return res.status(200).json(updatedWorkOrder);
     }
     
     // Check if technician exists
-    const technician = await prisma.technician.findUnique({
-      where: { id: Number(technicianId) }
-    });
+    const { data: technician, error: technicianError } = await supabase
+      .from('Technician')
+      .select()
+      .eq('id', technicianId)
+      .single();
     
-    if (!technician) {
-      return res.status(404).json({ error: 'Technician not found' });
+    if (technicianError) {
+      if (technicianError.code === 'PGRST116') {
+        return res.status(404).json({ error: 'Technician not found' });
+      }
+      throw technicianError;
     }
     
     // Assign technician to work order
-    const updatedWorkOrder = await prisma.workOrder.update({
-      where: { id: Number(id) },
-      data: { technicianId: Number(technicianId) }
-    });
+    const { data: updatedWorkOrder, error } = await supabase
+      .from('WorkOrder')
+      .update({ technicianId: Number(technicianId) })
+      .eq('id', id)
+      .select(`
+        *,
+        customer:customerId (*),
+        vehicle:vehicleId (*),
+        technician:technicianId (*)
+      `)
+      .single();
     
-    return res.status(200).json(updatedWorkOrder);
-  } catch (error) {
+    if (error) throw error;
+    
+    res.status(200).json(updatedWorkOrder);
+  } catch (error: any) {
     console.error(`Error assigning technician to work order ${req.params.id}:`, error);
-    return res.status(500).json({ 
+    res.status(500).json({ 
       error: 'Failed to assign technician to work order',
-      details: error instanceof Error ? error.message : 'Unknown error'
+      details: error.message
     });
   }
 };
@@ -444,29 +466,40 @@ export const scheduleWorkOrder = async (req: Request, res: Response) => {
     }
     
     // Check if work order exists
-    const existingWorkOrder = await prisma.workOrder.findUnique({
-      where: { id: Number(id) }
-    });
+    const { data: existingWorkOrder, error: getError } = await supabase
+      .from('WorkOrder')
+      .select()
+      .eq('id', id)
+      .single();
     
-    if (!existingWorkOrder) {
+    if (getError || !existingWorkOrder) {
       return res.status(404).json({ error: 'Work order not found' });
     }
     
     // Schedule work order
-    const updatedWorkOrder = await prisma.workOrder.update({
-      where: { id: Number(id) },
-      data: { 
+    const { data: updatedWorkOrder, error } = await supabase
+      .from('WorkOrder')
+      .update({ 
         scheduledDate: new Date(scheduledDate),
         status: existingWorkOrder.status === 'cancelled' ? 'scheduled' : existingWorkOrder.status
-      }
-    });
+      })
+      .eq('id', id)
+      .select(`
+        *,
+        customer:customerId (*),
+        vehicle:vehicleId (*),
+        technician:technicianId (*)
+      `)
+      .single();
     
-    return res.status(200).json(updatedWorkOrder);
-  } catch (error) {
+    if (error) throw error;
+    
+    res.status(200).json(updatedWorkOrder);
+  } catch (error: any) {
     console.error(`Error scheduling work order ${req.params.id}:`, error);
-    return res.status(500).json({ 
+    res.status(500).json({ 
       error: 'Failed to schedule work order',
-      details: error instanceof Error ? error.message : 'Unknown error'
+      details: error.message
     });
   }
 }; 

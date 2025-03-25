@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { prisma } from '../index';
+import { supabase } from '../utils/supabase';
 
 /**
  * Get all vehicles
@@ -7,21 +7,22 @@ import { prisma } from '../index';
  */
 export const getAllVehicles = async (req: Request, res: Response) => {
   try {
-    const vehicles = await prisma.vehicle.findMany({
-      orderBy: {
-        createdAt: 'desc'
-      },
-      include: {
-        customer: true
-      }
-    });
-    
-    return res.status(200).json(vehicles);
-  } catch (error) {
+    const { data: vehicles, error } = await supabase
+      .from('Vehicle')
+      .select(`
+        *,
+        customer:customerId (*)
+      `)
+      .order('createdAt', { ascending: false });
+
+    if (error) throw error;
+
+    res.json(vehicles);
+  } catch (error: any) {
     console.error('Error fetching vehicles:', error);
-    return res.status(500).json({ 
+    res.status(500).json({
       error: 'Failed to fetch vehicles',
-      details: error instanceof Error ? error.message : 'Unknown error'
+      details: error.message
     });
   }
 };
@@ -33,29 +34,31 @@ export const getAllVehicles = async (req: Request, res: Response) => {
 export const getVehicleById = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    
-    const vehicle = await prisma.vehicle.findUnique({
-      where: { id: Number(id) },
-      include: {
-        customer: true,
-        workOrders: {
-          orderBy: {
-            createdAt: 'desc'
-          }
-        }
+    const { data: vehicle, error } = await supabase
+      .from('Vehicle')
+      .select(`
+        *,
+        customer:customerId (*),
+        workOrders (*)
+      `)
+      .eq('id', id)
+      .single();
+
+    if (error) {
+      if (error.code === 'PGRST116') {
+        return res.status(404).json({
+          error: 'Vehicle not found'
+        });
       }
-    });
-    
-    if (!vehicle) {
-      return res.status(404).json({ error: 'Vehicle not found' });
+      throw error;
     }
-    
-    return res.status(200).json(vehicle);
-  } catch (error) {
-    console.error(`Error fetching vehicle ${req.params.id}:`, error);
-    return res.status(500).json({ 
+
+    res.json(vehicle);
+  } catch (error: any) {
+    console.error('Error fetching vehicle:', error);
+    res.status(500).json({
       error: 'Failed to fetch vehicle',
-      details: error instanceof Error ? error.message : 'Unknown error'
+      details: error.message
     });
   }
 };
@@ -66,52 +69,41 @@ export const getVehicleById = async (req: Request, res: Response) => {
  */
 export const createVehicle = async (req: Request, res: Response) => {
   try {
-    const { 
-      customerId, 
-      make, 
-      model, 
-      year, 
-      color, 
-      vinNumber, 
-      licensePlate, 
-      glassType, 
-      notes 
-    } = req.body;
-    
-    // Validate required fields
-    if (!customerId || !make || !model || !year) {
-      return res.status(400).json({ error: 'Customer ID, make, model, and year are required' });
-    }
+    const vehicleData = req.body;
     
     // Check if customer exists
-    const customer = await prisma.customer.findUnique({
-      where: { id: Number(customerId) }
-    });
-    
-    if (!customer) {
-      return res.status(404).json({ error: 'Customer not found' });
-    }
-    
-    const newVehicle = await prisma.vehicle.create({
-      data: {
-        customerId: Number(customerId),
-        make,
-        model,
-        year: Number(year),
-        color,
-        vinNumber,
-        licensePlate,
-        glassType,
-        notes
+    const { data: customer, error: customerError } = await supabase
+      .from('Customer')
+      .select()
+      .eq('id', vehicleData.customerId)
+      .single();
+
+    if (customerError) {
+      if (customerError.code === 'PGRST116') {
+        return res.status(404).json({
+          error: 'Customer not found'
+        });
       }
-    });
-    
-    return res.status(201).json(newVehicle);
-  } catch (error) {
+      throw customerError;
+    }
+
+    const { data: newVehicle, error } = await supabase
+      .from('Vehicle')
+      .insert([vehicleData])
+      .select(`
+        *,
+        customer:customerId (*)
+      `)
+      .single();
+
+    if (error) throw error;
+
+    res.status(201).json(newVehicle);
+  } catch (error: any) {
     console.error('Error creating vehicle:', error);
-    return res.status(500).json({ 
+    res.status(500).json({
       error: 'Failed to create vehicle',
-      details: error instanceof Error ? error.message : 'Unknown error'
+      details: error.message
     });
   }
 };
@@ -123,60 +115,60 @@ export const createVehicle = async (req: Request, res: Response) => {
 export const updateVehicle = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { 
-      customerId, 
-      make, 
-      model, 
-      year, 
-      color, 
-      vinNumber, 
-      licensePlate, 
-      glassType, 
-      notes 
-    } = req.body;
-    
+    const vehicleData = req.body;
+
     // Check if vehicle exists
-    const existingVehicle = await prisma.vehicle.findUnique({
-      where: { id: Number(id) }
-    });
-    
-    if (!existingVehicle) {
-      return res.status(404).json({ error: 'Vehicle not found' });
+    const { data: existingVehicle, error: checkError } = await supabase
+      .from('Vehicle')
+      .select()
+      .eq('id', id)
+      .single();
+
+    if (checkError) {
+      if (checkError.code === 'PGRST116') {
+        return res.status(404).json({
+          error: 'Vehicle not found'
+        });
+      }
+      throw checkError;
     }
-    
-    // If customerId is provided, check if customer exists
-    if (customerId) {
-      const customer = await prisma.customer.findUnique({
-        where: { id: Number(customerId) }
-      });
-      
-      if (!customer) {
-        return res.status(404).json({ error: 'Customer not found' });
+
+    // If customerId is being updated, check if new customer exists
+    if (vehicleData.customerId) {
+      const { data: customer, error: customerError } = await supabase
+        .from('Customer')
+        .select()
+        .eq('id', vehicleData.customerId)
+        .single();
+
+      if (customerError) {
+        if (customerError.code === 'PGRST116') {
+          return res.status(404).json({
+            error: 'Customer not found'
+          });
+        }
+        throw customerError;
       }
     }
-    
-    // Update vehicle
-    const updatedVehicle = await prisma.vehicle.update({
-      where: { id: Number(id) },
-      data: {
-        customerId: customerId ? Number(customerId) : undefined,
-        make,
-        model,
-        year: year ? Number(year) : undefined,
-        color,
-        vinNumber,
-        licensePlate,
-        glassType,
-        notes
-      }
-    });
-    
-    return res.status(200).json(updatedVehicle);
-  } catch (error) {
-    console.error(`Error updating vehicle ${req.params.id}:`, error);
-    return res.status(500).json({ 
+
+    const { data: updatedVehicle, error } = await supabase
+      .from('Vehicle')
+      .update(vehicleData)
+      .eq('id', id)
+      .select(`
+        *,
+        customer:customerId (*)
+      `)
+      .single();
+
+    if (error) throw error;
+
+    res.json(updatedVehicle);
+  } catch (error: any) {
+    console.error('Error updating vehicle:', error);
+    res.status(500).json({
       error: 'Failed to update vehicle',
-      details: error instanceof Error ? error.message : 'Unknown error'
+      details: error.message
     });
   }
 };
@@ -188,27 +180,36 @@ export const updateVehicle = async (req: Request, res: Response) => {
 export const deleteVehicle = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    
+
     // Check if vehicle exists
-    const existingVehicle = await prisma.vehicle.findUnique({
-      where: { id: Number(id) }
-    });
-    
-    if (!existingVehicle) {
-      return res.status(404).json({ error: 'Vehicle not found' });
+    const { data: existingVehicle, error: checkError } = await supabase
+      .from('Vehicle')
+      .select()
+      .eq('id', id)
+      .single();
+
+    if (checkError) {
+      if (checkError.code === 'PGRST116') {
+        return res.status(404).json({
+          error: 'Vehicle not found'
+        });
+      }
+      throw checkError;
     }
-    
-    // Delete vehicle
-    await prisma.vehicle.delete({
-      where: { id: Number(id) }
-    });
-    
-    return res.status(200).json({ message: 'Vehicle deleted successfully' });
-  } catch (error) {
-    console.error(`Error deleting vehicle ${req.params.id}:`, error);
-    return res.status(500).json({ 
+
+    const { error } = await supabase
+      .from('Vehicle')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
+
+    res.status(204).send();
+  } catch (error: any) {
+    console.error('Error deleting vehicle:', error);
+    res.status(500).json({
       error: 'Failed to delete vehicle',
-      details: error instanceof Error ? error.message : 'Unknown error'
+      details: error.message
     });
   }
 }; 

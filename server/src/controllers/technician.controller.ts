@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { prisma } from '../index';
+import { supabase } from '../utils/supabase';
 
 /**
  * Get all technicians
@@ -7,30 +7,19 @@ import { prisma } from '../index';
  */
 export const getAllTechnicians = async (req: Request, res: Response) => {
   try {
-    // Extract query parameters for filtering
-    const { active } = req.query;
-    
-    // Build filter object
-    const filter: any = {};
-    
-    if (active !== undefined) {
-      filter.active = active === 'true';
-    }
-    
-    // Get technicians with filtering
-    const technicians = await prisma.technician.findMany({
-      where: filter,
-      orderBy: {
-        lastName: 'asc'
-      }
-    });
-    
-    return res.status(200).json(technicians);
-  } catch (error) {
+    const { data: technicians, error } = await supabase
+      .from('Technician')
+      .select('*')
+      .order('lastName', { ascending: true });
+
+    if (error) throw error;
+
+    res.json(technicians);
+  } catch (error: any) {
     console.error('Error fetching technicians:', error);
-    return res.status(500).json({ 
+    res.status(500).json({
       error: 'Failed to fetch technicians',
-      details: error instanceof Error ? error.message : 'Unknown error'
+      details: error.message
     });
   }
 };
@@ -42,21 +31,27 @@ export const getAllTechnicians = async (req: Request, res: Response) => {
 export const getTechnicianById = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    
-    const technician = await prisma.technician.findUnique({
-      where: { id: Number(id) }
-    });
-    
-    if (!technician) {
-      return res.status(404).json({ error: 'Technician not found' });
+    const { data: technician, error } = await supabase
+      .from('Technician')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (error) {
+      if (error.code === 'PGRST116') {
+        return res.status(404).json({
+          error: 'Technician not found'
+        });
+      }
+      throw error;
     }
-    
-    return res.status(200).json(technician);
-  } catch (error) {
-    console.error(`Error fetching technician ${req.params.id}:`, error);
-    return res.status(500).json({ 
+
+    res.json(technician);
+  } catch (error: any) {
+    console.error('Error fetching technician:', error);
+    res.status(500).json({
       error: 'Failed to fetch technician',
-      details: error instanceof Error ? error.message : 'Unknown error'
+      details: error.message
     });
   }
 };
@@ -67,43 +62,21 @@ export const getTechnicianById = async (req: Request, res: Response) => {
  */
 export const createTechnician = async (req: Request, res: Response) => {
   try {
-    const { 
-      firstName, 
-      lastName, 
-      email, 
-      phone, 
-      skills,
-      notes,
-      active
-    } = req.body;
-    
-    // Validate required fields
-    if (!firstName || !lastName || !phone) {
-      return res.status(400).json({ 
-        error: 'Missing required fields', 
-        requiredFields: ['firstName', 'lastName', 'phone']
-      });
-    }
-    
-    // Create technician
-    const technician = await prisma.technician.create({
-      data: {
-        firstName,
-        lastName,
-        email,
-        phone,
-        skills: skills || [],
-        notes,
-        active: active !== undefined ? active : true
-      }
-    });
-    
-    return res.status(201).json(technician);
-  } catch (error) {
+    const technicianData = req.body;
+    const { data: newTechnician, error } = await supabase
+      .from('Technician')
+      .insert([technicianData])
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    res.status(201).json(newTechnician);
+  } catch (error: any) {
     console.error('Error creating technician:', error);
-    return res.status(500).json({ 
+    res.status(500).json({
       error: 'Failed to create technician',
-      details: error instanceof Error ? error.message : 'Unknown error'
+      details: error.message
     });
   }
 };
@@ -115,45 +88,39 @@ export const createTechnician = async (req: Request, res: Response) => {
 export const updateTechnician = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { 
-      firstName, 
-      lastName, 
-      email, 
-      phone, 
-      skills,
-      notes,
-      active
-    } = req.body;
-    
+    const technicianData = req.body;
+
     // Check if technician exists
-    const existingTechnician = await prisma.technician.findUnique({
-      where: { id: Number(id) }
-    });
-    
-    if (!existingTechnician) {
-      return res.status(404).json({ error: 'Technician not found' });
-    }
-    
-    // Update technician
-    const updatedTechnician = await prisma.technician.update({
-      where: { id: Number(id) },
-      data: {
-        firstName,
-        lastName,
-        email,
-        phone,
-        skills,
-        notes,
-        active
+    const { data: existingTechnician, error: checkError } = await supabase
+      .from('Technician')
+      .select()
+      .eq('id', id)
+      .single();
+
+    if (checkError) {
+      if (checkError.code === 'PGRST116') {
+        return res.status(404).json({
+          error: 'Technician not found'
+        });
       }
-    });
-    
-    return res.status(200).json(updatedTechnician);
-  } catch (error) {
-    console.error(`Error updating technician ${req.params.id}:`, error);
-    return res.status(500).json({ 
+      throw checkError;
+    }
+
+    const { data: updatedTechnician, error } = await supabase
+      .from('Technician')
+      .update(technicianData)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    res.json(updatedTechnician);
+  } catch (error: any) {
+    console.error('Error updating technician:', error);
+    res.status(500).json({
       error: 'Failed to update technician',
-      details: error instanceof Error ? error.message : 'Unknown error'
+      details: error.message
     });
   }
 };
@@ -165,42 +132,36 @@ export const updateTechnician = async (req: Request, res: Response) => {
 export const deleteTechnician = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    
+
     // Check if technician exists
-    const existingTechnician = await prisma.technician.findUnique({
-      where: { id: Number(id) }
-    });
-    
-    if (!existingTechnician) {
-      return res.status(404).json({ error: 'Technician not found' });
-    }
-    
-    // Check if technician has assigned work orders
-    const assignedWorkOrders = await prisma.workOrder.findMany({
-      where: { 
-        technicianId: Number(id),
-        status: { notIn: ['completed', 'cancelled'] }
+    const { data: existingTechnician, error: checkError } = await supabase
+      .from('Technician')
+      .select()
+      .eq('id', id)
+      .single();
+
+    if (checkError) {
+      if (checkError.code === 'PGRST116') {
+        return res.status(404).json({
+          error: 'Technician not found'
+        });
       }
-    });
-    
-    if (assignedWorkOrders.length > 0) {
-      return res.status(400).json({ 
-        error: 'Cannot delete technician with assigned work orders',
-        assignedWorkOrders: assignedWorkOrders.length
-      });
+      throw checkError;
     }
-    
-    // Delete technician
-    await prisma.technician.delete({
-      where: { id: Number(id) }
-    });
-    
-    return res.status(200).json({ message: 'Technician deleted successfully' });
-  } catch (error) {
-    console.error(`Error deleting technician ${req.params.id}:`, error);
-    return res.status(500).json({ 
+
+    const { error } = await supabase
+      .from('Technician')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
+
+    res.status(204).send();
+  } catch (error: any) {
+    console.error('Error deleting technician:', error);
+    res.status(500).json({
       error: 'Failed to delete technician',
-      details: error instanceof Error ? error.message : 'Unknown error'
+      details: error.message
     });
   }
 };
@@ -212,44 +173,41 @@ export const deleteTechnician = async (req: Request, res: Response) => {
 export const getTechnicianWorkOrders = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { status } = req.query;
-    
+
     // Check if technician exists
-    const existingTechnician = await prisma.technician.findUnique({
-      where: { id: Number(id) }
-    });
-    
-    if (!existingTechnician) {
-      return res.status(404).json({ error: 'Technician not found' });
-    }
-    
-    // Build filter
-    const filter: any = {
-      technicianId: Number(id)
-    };
-    
-    if (status) {
-      filter.status = status as string;
-    }
-    
-    // Get technician work orders
-    const workOrders = await prisma.workOrder.findMany({
-      where: filter,
-      orderBy: {
-        scheduledDate: 'asc'
-      },
-      include: {
-        customer: true,
-        vehicle: true
+    const { data: existingTechnician, error: checkError } = await supabase
+      .from('Technician')
+      .select()
+      .eq('id', id)
+      .single();
+
+    if (checkError) {
+      if (checkError.code === 'PGRST116') {
+        return res.status(404).json({
+          error: 'Technician not found'
+        });
       }
-    });
-    
-    return res.status(200).json(workOrders);
-  } catch (error) {
-    console.error(`Error fetching work orders for technician ${req.params.id}:`, error);
-    return res.status(500).json({ 
+      throw checkError;
+    }
+
+    const { data: workOrders, error } = await supabase
+      .from('WorkOrder')
+      .select(`
+        *,
+        customer:customerId (*),
+        vehicle:vehicleId (*)
+      `)
+      .eq('technicianId', id)
+      .order('scheduledDate', { ascending: true });
+
+    if (error) throw error;
+
+    res.json(workOrders);
+  } catch (error: any) {
+    console.error('Error fetching technician work orders:', error);
+    res.status(500).json({
       error: 'Failed to fetch technician work orders',
-      details: error instanceof Error ? error.message : 'Unknown error'
+      details: error.message
     });
   }
 };
@@ -264,11 +222,13 @@ export const getTechnicianSchedule = async (req: Request, res: Response) => {
     const { fromDate, toDate } = req.query;
     
     // Check if technician exists
-    const existingTechnician = await prisma.technician.findUnique({
-      where: { id: Number(id) }
-    });
+    const existingTechnician = await supabase
+      .from('Technician')
+      .select()
+      .eq('id', id)
+      .single();
     
-    if (!existingTechnician) {
+    if (existingTechnician.error) {
       return res.status(404).json({ error: 'Technician not found' });
     }
     
@@ -299,27 +259,27 @@ export const getTechnicianSchedule = async (req: Request, res: Response) => {
     }
     
     // Get technician schedule
-    const schedule = await prisma.workOrder.findMany({
-      where: {
-        technicianId: Number(id),
-        scheduledDate: dateFilter,
-        status: { notIn: ['completed', 'cancelled'] }
-      },
-      orderBy: {
-        scheduledDate: 'asc'
-      },
-      include: {
-        customer: true,
-        vehicle: true
-      }
-    });
+    const schedule = await supabase
+      .from('WorkOrder')
+      .select(`
+        *,
+        customer:customerId (*),
+        vehicle:vehicleId (*)
+      `)
+      .eq('technicianId', id)
+      .gte('scheduledDate', dateFilter.gte)
+      .lte('scheduledDate', dateFilter.lte)
+      .not('status', 'in', ['completed', 'cancelled'])
+      .order('scheduledDate', { ascending: true });
     
-    return res.status(200).json(schedule);
-  } catch (error) {
-    console.error(`Error fetching schedule for technician ${req.params.id}:`, error);
-    return res.status(500).json({ 
+    if (schedule.error) throw schedule.error;
+    
+    res.json(schedule.data);
+  } catch (error: any) {
+    console.error('Error fetching technician schedule:', error);
+    res.status(500).json({
       error: 'Failed to fetch technician schedule',
-      details: error instanceof Error ? error.message : 'Unknown error'
+      details: error.message
     });
   }
 }; 
