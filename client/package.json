@@ -67,6 +67,12 @@
     "lint": "eslint . --ext .ts,.tsx",
     "format": "prettier --write \"src/**/*.{ts,tsx}\"",
     "test": "jest",
-    "test:watch": "jest --watch"
+    "test:watch": "jest --watch",
+    "docker:dev": "../docker-helpers.sh dev",
+    "docker:test": "../docker-helpers.sh test",
+    "docker:prod": "../docker-helpers.sh prod",
+    "docker:down": "../docker-helpers.sh down-all",
+    "docker:logs": "../docker-helpers.sh dev logs",
+    "docker:rebuild": "../docker-helpers.sh dev rebuild"
   }
 }

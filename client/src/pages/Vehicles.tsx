@@ -3,14 +3,8 @@ import { useQuery } from '@tanstack/react-query';
 import { vehicleApi } from '../services/api';
 import { useNavigate, Link } from 'react-router-dom';
 
-// This would be moved to a service file in a real implementation
-const fetchVehicles = async () => {
-  const response = await fetch('http://localhost:3001/api/vehicles');
-  if (!response.ok) {
-    throw new Error('Failed to fetch vehicles');
-  }
-  return response.json();
-};
+// Use the vehicleApi service directly
+const fetchVehicles = () => vehicleApi.getAll();
 
 const Vehicles = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -18,7 +12,7 @@ const Vehicles = () => {
   
   const { data: vehicles = [], isLoading, error } = useQuery({
     queryKey: ['vehicles'],
-    queryFn: vehicleApi.getAll
+    queryFn: fetchVehicles
   });
   
   // Filter vehicles based on search term
