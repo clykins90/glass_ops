@@ -8,7 +8,9 @@ const Customers = () => {
   
   const { data: customers = [], isLoading, error } = useQuery({
     queryKey: ['customers'],
-    queryFn: customerApi.getAll
+    queryFn: customerApi.getAll,
+    refetchOnMount: true,
+    staleTime: 0 // Always fetch fresh data
   });
   
   // Filter customers based on search term

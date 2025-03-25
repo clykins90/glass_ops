@@ -31,13 +31,16 @@ import NotFound from './pages/NotFound';
 import { AppProvider } from './context/AppContext';
 import { VehicleProvider } from './context/VehicleContext';
 import { WorkOrderProvider } from './context/WorkOrderContext';
+import { CustomerProvider } from './context/CustomerContext';
 
 // Create a client
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 5 * 60 * 1000, // 5 minutes
+      staleTime: 30 * 1000, // 30 seconds instead of 5 minutes
       retry: 1,
+      refetchOnMount: true,
+      refetchOnWindowFocus: true,
     },
   },
 });
@@ -46,37 +49,39 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AppProvider>
-        <VehicleProvider>
-          <WorkOrderProvider>
-            <Router>
-              <Routes>
-                <Route path="/" element={<DashboardLayout />}>
-                  <Route index element={<Dashboard />} />
-                  <Route path="customers" element={<Customers />} />
-                  <Route path="customers/add" element={<CustomerAdd />} />
-                  <Route path="customers/:id" element={<CustomerDetails />} />
-                  <Route path="customers/:id/edit" element={<CustomerEdit />} />
-                  <Route path="customers/:customerId/vehicles/new" element={<AddVehicle />} />
-                  <Route path="vehicles" element={<Vehicles />} />
-                  <Route path="vehicles/new" element={<AddVehicle />} />
-                  <Route path="vehicles/:id" element={<VehicleDetails />} />
-                  <Route path="vehicles/:id/edit" element={<EditVehicle />} />
-                  <Route path="work-orders" element={<WorkOrders />} />
-                  <Route path="work-orders/add" element={<AddWorkOrder />} />
-                  <Route path="work-orders/:id" element={<WorkOrderDetails />} />
-                  <Route path="work-orders/:id/edit" element={<EditWorkOrder />} />
-                  <Route path="schedule" element={<Schedule />} />
-                  <Route path="technicians" element={<Technicians />} />
-                  <Route path="technicians/add" element={<AddTechnician />} />
-                  <Route path="technicians/:id" element={<TechnicianDetails />} />
-                  <Route path="technicians/:id/edit" element={<EditTechnician />} />
-                  <Route path="*" element={<NotFound />} />
-                </Route>
-              </Routes>
-            </Router>
-            <ReactQueryDevtools initialIsOpen={false} />
-          </WorkOrderProvider>
-        </VehicleProvider>
+        <CustomerProvider>
+          <VehicleProvider>
+            <WorkOrderProvider>
+              <Router>
+                <Routes>
+                  <Route path="/" element={<DashboardLayout />}>
+                    <Route index element={<Dashboard />} />
+                    <Route path="customers" element={<Customers />} />
+                    <Route path="customers/add" element={<CustomerAdd />} />
+                    <Route path="customers/:id" element={<CustomerDetails />} />
+                    <Route path="customers/:id/edit" element={<CustomerEdit />} />
+                    <Route path="customers/:customerId/vehicles/new" element={<AddVehicle />} />
+                    <Route path="vehicles" element={<Vehicles />} />
+                    <Route path="vehicles/new" element={<AddVehicle />} />
+                    <Route path="vehicles/:id" element={<VehicleDetails />} />
+                    <Route path="vehicles/:id/edit" element={<EditVehicle />} />
+                    <Route path="work-orders" element={<WorkOrders />} />
+                    <Route path="work-orders/add" element={<AddWorkOrder />} />
+                    <Route path="work-orders/:id" element={<WorkOrderDetails />} />
+                    <Route path="work-orders/:id/edit" element={<EditWorkOrder />} />
+                    <Route path="schedule" element={<Schedule />} />
+                    <Route path="technicians" element={<Technicians />} />
+                    <Route path="technicians/add" element={<AddTechnician />} />
+                    <Route path="technicians/:id" element={<TechnicianDetails />} />
+                    <Route path="technicians/:id/edit" element={<EditTechnician />} />
+                    <Route path="*" element={<NotFound />} />
+                  </Route>
+                </Routes>
+              </Router>
+              <ReactQueryDevtools initialIsOpen={false} />
+            </WorkOrderProvider>
+          </VehicleProvider>
+        </CustomerProvider>
       </AppProvider>
     </QueryClientProvider>
   );

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, UseQueryOptions } from '@tanstack/react-query';
 import { customerApi, vehicleApi, technicianApi } from '../../services/api';
 import { WorkOrder } from '../../types/workOrder';
 
@@ -41,6 +41,8 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
   const { data: customers = [] } = useQuery({
     queryKey: ['customers'],
     queryFn: customerApi.getAll,
+    refetchOnMount: true,
+    staleTime: 0,
   });
 
   // Fetch vehicles for selected customer
