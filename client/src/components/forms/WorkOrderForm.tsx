@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useQuery, UseQueryOptions } from '@tanstack/react-query';
 import { customerApi, vehicleApi, technicianApi } from '../../services/api';
 import { WorkOrder } from '../../types/workOrder';
