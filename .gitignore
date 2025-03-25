@@ -10,10 +10,19 @@ node_modules/
 
 # Environment variables
 .env
+.env.*
+!.env.example
+.env.development
+.env.test
+.env.production
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
+.env.*.local
+
+# Documentation
+/documentation/
 
 # Logs
 npm-debug.log*
@@ -25,9 +34,7 @@ logs/
 
 # Editor directories and files
 .idea/
-.vscode/*
-!.vscode/extensions.json
-!.vscode/settings.json
+.vscode/
 *.sublime-project
 *.sublime-workspace
 .DS_Store
@@ -36,6 +43,7 @@ logs/
 *.njsproj
 *.sln
 *.sw?
+.cursor/
 
 # Testing
 /coverage
@@ -55,3 +63,28 @@ logs/
 # Misc
 .tmp
 .temp 
+
+# Docker
+.docker/
+docker-volumes/
+*.env.docker
+docker-compose.override.yml 
+docker-compose*.yml
+docker-helpers.sh
+
+# Client specific
+client/.env.example
+client/.gitignore
+client/Dockerfile
+
+# Server specific
+server/.gitignore
+server/Dockerfile
+
+# Supabase
+supabase/
+server/src/services/
+server/src/utils/
+
+# TypeScript
+client/src/vite-env.d.ts 
