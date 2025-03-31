@@ -1,14 +1,17 @@
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Button } from '../components/ui/button';
-import { UserCircle } from 'lucide-react';
+import { UserCircle, LogOut } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { Profile } from '../types/profile';
+import { useQuery } from '@tanstack/react-query';
+import * as userService from '../services/userService';
+import { ThemeToggle } from '../components/ThemeToggle';
 
 const DashboardLayout = () => {
   const location = useLocation();
-  const { logout, user, loading } = useAuth();
+  const { logout, user, loading: authLoading } = useAuth();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [profileLoading, setProfileLoading] = useState(true);
   
@@ -64,29 +67,49 @@ const DashboardLayout = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="min-h-screen bg-gray-100 dark:bg-gray-900">
       {/* Header */}
-      <header className="bg-white shadow">
+      <header className="bg-white dark:bg-gray-800 shadow dark:shadow-gray-700">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16">
+          <div className="flex h-16 items-center">
             <div className="flex">
               <div className="flex-shrink-0 flex items-center">
-                <h1 className="text-xl font-bold text-gray-900">GlassOps</h1>
+                <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">GlassOps</h1>
               </div>
             </div>
-            {user && !loading && (
-              <div className="flex items-center gap-2 text-sm">
-                <div className="text-gray-500">
+            {user && !authLoading && (
+              <div className="ml-auto flex items-center gap-2 text-sm">
+                <div className="text-gray-500 dark:text-gray-400">
                   Logged in as: {user.email} {profile?.role ? `(${profile.role})` : user.role && `(${user.role})`}
                 </div>
                 <Link 
                   to="/profile" 
-                  className="flex items-center gap-1 text-blue-600 hover:text-blue-800"
+                  className="flex items-center gap-1 text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
                   title="View/Edit Profile"
                 >
                   <UserCircle size={18} />
-                  <span>Profile</span>
+                  <span className="hidden md:inline">Profile</span>
                 </Link>
+                <Button 
+                   variant="ghost"
+                   size="sm"
+                   className="flex items-center gap-1 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100"
+                   onClick={handleLogout}
+                   disabled={authLoading}
+                   title="Logout"
+                 >
+                   <LogOut size={16} />
+                   <span className="hidden md:inline">Logout</span>
+                 </Button>
+                 <ThemeToggle />
+              </div>
+            )}
+            {authLoading && (
+              <div className="ml-auto flex items-center gap-2 text-sm">
+                <div className="animate-pulse h-4 w-24 bg-gray-300 dark:bg-gray-600 rounded"></div>
+                <div className="animate-pulse h-8 w-16 bg-gray-300 dark:bg-gray-600 rounded"></div>
+                <div className="animate-pulse h-8 w-16 bg-gray-300 dark:bg-gray-600 rounded"></div>
+                <div className="animate-pulse h-8 w-10 bg-gray-300 dark:bg-gray-600 rounded"></div>
               </div>
             )}
           </div>
@@ -95,17 +118,17 @@ const DashboardLayout = () => {
       
       <div className="flex">
         {/* Sidebar */}
-        <aside className="w-64 bg-white shadow h-screen sticky top-0 flex flex-col">
-          <nav className="mt-5 px-2 flex-grow">
-            <ul className="space-y-2">
+        <aside className="w-64 bg-white dark:bg-gray-800 shadow h-[calc(100vh-4rem)] sticky top-16 flex flex-col">
+          <nav className="mt-5 px-2 flex-grow overflow-y-auto">
+            <ul className="space-y-1">
               {navItems.map((item) => (
                 <li key={item.path}>
                   <Link
                     to={item.path}
-                    className={`group flex items-center px-2 py-2 text-base font-medium rounded-md ${
-                      location.pathname === item.path
-                        ? 'bg-gray-100 text-gray-900'
-                        : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                    className={`group flex items-center px-2 py-2 text-sm font-medium rounded-md ${
+                      location.pathname.startsWith(item.path)
+                        ? 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white'
+                        : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white'
                     }`}
                   >
                     {item.label}
@@ -114,21 +137,11 @@ const DashboardLayout = () => {
               ))}
             </ul>
           </nav>
-          <div className="p-4 mt-auto border-t border-gray-200">
-             <Button 
-               variant="outline" 
-               className="w-full" 
-               onClick={handleLogout}
-               disabled={loading}
-             >
-               {loading ? 'Logging out...' : 'Logout'}
-             </Button>
-          </div>
         </aside>
         
         {/* Main content */}
-        <main className="flex-1 py-6 px-4 sm:px-6">
-          <div className="max-w-7xl mx-auto">
+        <main className="flex-1 py-6 px-4 sm:px-6 lg:px-8 overflow-y-auto h-[calc(100vh-4rem)]">
+          <div>
             <Outlet />
           </div>
         </main>
