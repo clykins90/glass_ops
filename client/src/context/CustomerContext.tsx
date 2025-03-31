@@ -30,10 +30,12 @@ export const CustomerProvider: React.FC<CustomerProviderProps> = ({ children }) 
   const queryClient = useQueryClient();
   const { session } = useAuth();
   
-  // Fetch customers - only run query if authenticated
-  const { data: customers = [], isLoading, error } = useQuery({
+  // Fetch customers - specify types explicitly
+  const { data: customers = [], isLoading, error } = useQuery<Customer[], Error>({
     queryKey: ['customers'],
-    queryFn: () => customerApi.getAll(),
+    queryFn: async (): Promise<Customer[]> => { // Explicit async/Promise return type
+      return customerApi.getAll();
+    },
     // Don't run the query if we're not authenticated
     enabled: !!session,
     // Don't throw errors for failed requests due to auth
@@ -49,28 +51,31 @@ export const CustomerProvider: React.FC<CustomerProviderProps> = ({ children }) 
     }
   });
 
-  // Create customer mutation
-  const createMutation = useMutation({
-    mutationFn: (newCustomer: Omit<Customer, 'id' | 'createdAt' | 'updatedAt'>) => 
-      customerApi.create(newCustomer),
+  // Create customer mutation - specify types explicitly
+  const createMutation = useMutation<Customer, Error, Omit<Customer, 'id' | 'createdAt' | 'updatedAt'>>({
+    mutationFn: async (newCustomer: Omit<Customer, 'id' | 'createdAt' | 'updatedAt'>): Promise<Customer> => { // Explicit async/Promise return type
+      return customerApi.create(newCustomer);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['customers'] });
     },
   });
 
-  // Update customer mutation
-  const updateMutation = useMutation({
-    mutationFn: ({ id, customer }: { id: number; customer: Partial<Customer> }) => 
-      customerApi.update(id, customer),
+  // Update customer mutation - specify types explicitly
+  const updateMutation = useMutation<Customer, Error, { id: number; customer: Partial<Customer> }>({
+    mutationFn: async ({ id, customer }: { id: number; customer: Partial<Customer> }): Promise<Customer> => { // Explicit async/Promise return type
+      return customerApi.update(id, customer);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['customers'] });
     },
   });
 
-  // Delete customer mutation
-  const deleteMutation = useMutation({
-    mutationFn: (id: number) => 
-      customerApi.delete(id),
+  // Delete customer mutation - specify types explicitly
+  const deleteMutation = useMutation<void, Error, number>({
+    mutationFn: async (id: number): Promise<void> => { // Explicit async/Promise return type
+      await customerApi.delete(id);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['customers'] });
     },
@@ -96,14 +101,14 @@ export const CustomerProvider: React.FC<CustomerProviderProps> = ({ children }) 
 
   // Context value
   const value: CustomerContextType = {
-    customers,
+    customers, // Type should now be correct
     isLoading,
     error: error instanceof Error ? error : error ? new Error(String(error)) : null,
     selectedCustomer,
     setSelectedCustomer,
-    createCustomer,
-    updateCustomer,
-    deleteCustomer,
+    createCustomer, // Type should now be correct
+    updateCustomer, // Type should now be correct
+    deleteCustomer, // Type should now be correct
   };
 
   return (

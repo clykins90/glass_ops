@@ -1,4 +1,9 @@
 import { supabase } from '../lib/supabaseClient';
+// Import necessary types
+import { Customer } from '../types/customer'; 
+import { WorkOrder } from '../types/workOrder'; 
+import { Vehicle } from '../types/vehicle'; 
+import { Profile } from '../types/profile'; // Assuming Technician maps to Profile
 
 // Check if we're in a test environment
 const isTest = typeof jest !== 'undefined';
@@ -103,38 +108,38 @@ const createCrudApi = <T>(entityPath: string) => ({
 
 // Export specific APIs
 export const workOrderApi = {
-  ...createCrudApi('workorders'),
+  ...createCrudApi<WorkOrder>('workorders'),
   getByStatus: async (status: string) => 
-    apiRequest(`workorders/status/${status}`)
+    apiRequest<WorkOrder[]>(`workorders/status/${status}`)
 };
 
 export const customerApi = {
-  ...createCrudApi('customers'),
+  ...createCrudApi<Customer>('customers'),
   getVehicles: async (customerId: string | number) => 
-    apiRequest(`customers/${customerId}/vehicles`),
+    apiRequest<Vehicle[]>(`customers/${customerId}/vehicles`),
   getWorkOrders: async (customerId: string | number) => 
-    apiRequest(`customers/${customerId}/workorders`)
+    apiRequest<WorkOrder[]>(`customers/${customerId}/workorders`)
 };
 
 export const vehicleApi = {
-  ...createCrudApi('vehicles'),
+  ...createCrudApi<Vehicle>('vehicles'),
   getByCustomerId: async (customerId: string | number) => 
-    apiRequest(`vehicles/customer/${customerId}`)
+    apiRequest<Vehicle[]>(`vehicles/customer/${customerId}`)
 };
 
 export const technicianApi = {
-  ...createCrudApi('technicians'),
+  ...createCrudApi<Profile>('technicians'),
 };
 
 // Dashboard API
 export const dashboardApi = {
-  getSummary: async () => apiRequest('dashboard/metrics'),
-  getRecentWorkOrders: async (limit = 5) => apiRequest(`dashboard/recent-work-orders?limit=${limit}`),
-  getTechnicianStats: async () => apiRequest('dashboard/technician-stats'),
+  getSummary: async (): Promise<any> => apiRequest('dashboard/metrics'),
+  getRecentWorkOrders: async (limit = 5): Promise<WorkOrder[]> => apiRequest(`dashboard/recent-work-orders?limit=${limit}`),
+  getTechnicianStats: async (): Promise<any[]> => apiRequest('dashboard/technician-stats'),
   getMetrics: async () => {
     const summary: Record<string, any> = await apiRequest('dashboard/metrics');
-    const recentWorkOrders = await apiRequest('dashboard/recent-work-orders');
-    const technicianStats = await apiRequest('dashboard/technician-stats');
+    const recentWorkOrders: WorkOrder[] = await apiRequest('dashboard/recent-work-orders');
+    const technicianStats: any[] = await apiRequest('dashboard/technician-stats');
     
     return {
       ...summary,
