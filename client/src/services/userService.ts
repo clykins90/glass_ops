@@ -16,7 +16,13 @@ export const getAllUsers = async (): Promise<Profile[]> => {
     throw error;
   }
 
-  return data || [];
+  // Ensure roles are lowercase for frontend consistency
+  const usersWithLowercaseRoles = (data || []).map(user => ({
+    ...user,
+    role: user.role ? user.role.toLowerCase() : null // Convert role to lowercase
+  }));
+
+  return usersWithLowercaseRoles;
 };
 
 /**
@@ -114,6 +120,7 @@ export const getAllPermissions = async () => {
   const { data, error } = await supabase
     .from('permissions')
     .select('*')
+    // Explicitly specify schema if needed, though 'public' is default
     .order('resource', { ascending: true })
     .order('action', { ascending: true });
 
