@@ -56,7 +56,7 @@ export const getWorkOrdersByTechnician = async (technicianProfileId: string): Pr
 };
 
 // Function to get schedule - uses getWorkOrdersByTechnician and filters dates locally
-export const getTechnicianSchedule = async (technicianProfileId: string, date?: Date): Promise<WorkOrder[]> => {
+export const getTechnicianSchedule = async (technicianProfileId: string): Promise<WorkOrder[]> => {
   const workOrders = await getWorkOrdersByTechnician(technicianProfileId);
   // TODO: Filter by date range and status (scheduled/in-progress)
   // This logic might need refinement based on WorkOrder type and requirements

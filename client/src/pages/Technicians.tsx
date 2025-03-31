@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useState } from 'react';
+import { useMutation } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { Profile } from '../types/profile';
 import { useTechnicianProfiles } from '../context/TechnicianContext';
@@ -8,7 +8,6 @@ import { Button } from '@/components/ui/button';
 
 const Technicians = () => {
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
   const { technicianProfiles, isLoading, error, deleteProfile } = useTechnicianProfiles();
   const [profileToDelete, setProfileToDelete] = useState<Profile | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);

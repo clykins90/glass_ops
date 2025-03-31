@@ -1,6 +1,5 @@
-import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import { technicianApi } from '../services/api';
 import TechnicianForm from '../components/forms/TechnicianForm';
 import { Profile } from '../types/profile';
@@ -9,7 +8,6 @@ import { useTechnicianProfiles } from '../context/TechnicianContext';
 const EditTechnician = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
   const { updateProfile } = useTechnicianProfiles();
 
   // Fetch technician profile details
@@ -29,7 +27,7 @@ const EditTechnician = () => {
       if (!id) throw new Error('Profile ID is missing');
       return updateProfile(id, data);
     },
-    onSuccess: (data) => {
+    onSuccess: () => {
       navigate(`/technicians/${id}`);
     },
     onError: (error) => {
