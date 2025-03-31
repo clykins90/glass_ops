@@ -237,7 +237,7 @@ const UserManagement: React.FC = () => {
                             <Checkbox 
                               id={`${selectedRole}-${permission.resource}-${permission.action}`}
                               checked={hasPermission(selectedRole, permission.resource, permission.action)}
-                              onCheckedChange={(checked: boolean) => 
+                              onCheckedChange={() => 
                                 togglePermission(
                                   selectedRole, 
                                   permission.resource, 
