@@ -221,7 +221,11 @@ const Dashboard = () => {
                        labelStyle={{ color: 'hsl(var(--popover-foreground))' }}
                      />
                     <Legend wrapperStyle={{ color: 'hsl(var(--foreground))', fontSize: '12px' }} />
-                    <Bar dataKey="count" fill="hsl(var(--primary))" name="Work Orders" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="count" name="Work Orders" radius={[4, 4, 0, 0]}>
+                      {metrics.workOrdersByStatus.map((entry, index) => (
+                        <Cell key={`cell-${index}-${entry.status}`} fill="hsl(var(--primary))" />
+                      ))}
+                    </Bar>
                   </BarChart>
                 </ResponsiveContainer>
               ) : (

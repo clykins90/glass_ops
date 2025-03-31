@@ -152,8 +152,8 @@ export function Calendar({ workOrders, onDateClick, onWorkOrderClick }: Calendar
                   key={dayIndex}
                   className={`min-h-[100px] p-2 border-r ${
                     !isSameMonth(day, monthStart)
-                      ? 'text-gray-400 bg-gray-50'
-                      : 'cursor-pointer hover:bg-gray-100'
+                      ? 'text-muted-foreground/60 bg-muted/50'
+                      : 'text-foreground cursor-pointer hover:bg-accent hover:text-accent-foreground'
                   }`}
                   onClick={() => onDateClick && onDateClick(day)}
                 >
