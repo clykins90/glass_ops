@@ -4,6 +4,18 @@ import { technicianApi } from '../services/api';
 import TechnicianForm from '../components/forms/TechnicianForm';
 import { Profile } from '../types/profile';
 import { useTechnicianProfiles } from '../context/TechnicianContext';
+// Import themed components
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Button } from '@/components/ui/button'; // Added Button import
+import { AlertCircle, Loader2 } from 'lucide-react';
+
+// Helper function (assuming defined globally or import)
+const getErrorMessage = (err: unknown): string => {
+  if (err instanceof Error) return err.message;
+  if (typeof err === 'string') return err;
+  return 'An unknown error occurred';
+};
 
 const EditTechnician = () => {
   const { id } = useParams<{ id: string }>();
@@ -14,66 +26,94 @@ const EditTechnician = () => {
   const { 
     data: profile,
     isLoading, 
-    error 
-  } = useQuery<Profile>({
-    queryKey: ['technician', id],
-    queryFn: () => technicianApi.getById(id!),
+    error,
+    isError // Add isError
+  } = useQuery<Profile, Error>({
+    queryKey: ['technician', id], // Use 'technician' key
+    queryFn: async () => { // Make async
+      if (!id) throw new Error('Technician ID is required');
+      const data = await technicianApi.getById(id); // Removed ! assertion
+      if (!data) throw new Error('Technician profile not found.');
+      return data;
+    },
     enabled: !!id,
+    retry: 1, // Add retry
   });
 
   // Update profile mutation using context function
   const updateMutation = useMutation({
     mutationFn: (data: Omit<Profile, 'id' | 'createdAt' | 'updatedAt' | 'company_id' | 'role'>) => {
       if (!id) throw new Error('Profile ID is missing');
-      return updateProfile(id, data);
+      return updateProfile(id, data); // updateProfile comes from context
     },
     onSuccess: () => {
-      navigate(`/technicians/${id}`);
+      // Consider invalidating query if context doesn't handle it
+      // queryClient.invalidateQueries({ queryKey: ['technician', id] });
+      // queryClient.invalidateQueries({ queryKey: ['technicianProfiles'] });
+      navigate(`/technicians/${id}`); // Navigate to detail page on success
     },
-    onError: (error) => {
-      console.error("Error updating profile:", error);
-    }
+    // Error is handled via updateMutation.isError below
   });
 
   const handleSubmit = (data: Omit<Profile, 'id' | 'createdAt' | 'updatedAt' | 'company_id' | 'role'>) => {
     updateMutation.mutate(data);
   };
 
+  // Loading State
   if (isLoading) {
-    return <div className="p-8 text-center">Loading technician profile details...</div>;
-  }
-
-  if (error) {
-    return <div className="p-8 text-center text-red-500">Error loading profile: {(error as Error).message}</div>;
-  }
-
-  if (!profile) {
-    return <div className="p-8 text-center text-red-500">Technician profile not found</div>;
-  }
-
-  return (
-    <div className="p-4 md:p-8">
-      <div className="md:flex md:items-center md:justify-between mb-6">
-        <div className="min-w-0 flex-1">
-          <h2 className="text-2xl font-bold leading-7 text-gray-900 sm:truncate sm:text-3xl sm:tracking-tight">
-            Edit Technician Profile: {profile.firstName} {profile.lastName}
-          </h2>
-        </div>
+    return (
+      <div className="py-8 flex justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
+    );
+  }
 
-      {updateMutation.isError && (
-        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-md">
-          <p className="text-sm text-red-600">
-            Error updating profile: {(updateMutation.error as Error).message}
-          </p>
-        </div>
-      )}
+  // Fetch Error State
+  if (isError || !profile) { // Check isError flag
+    return (
+      <div className="py-8 max-w-md mx-auto space-y-4">
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Error Loading Profile</AlertTitle>
+          <AlertDescription>{error ? getErrorMessage(error) : 'Profile data could not be retrieved.'}</AlertDescription>
+        </Alert>
+        <Button onClick={() => navigate('/technicians')} variant="outline">
+          Back to Technicians List
+        </Button>
+      </div>
+    );
+  }
 
-      <TechnicianForm 
-        initialData={profile} 
-        onSubmit={handleSubmit} 
-        isLoading={updateMutation.isLoading} 
-      />
+  // Main Content
+  return (
+    <div className="py-8">
+      <Card className="max-w-2xl mx-auto">
+        <CardHeader>
+          <CardTitle className="text-2xl">Edit Technician Profile</CardTitle>
+          <CardDescription>
+            Editing {profile.firstName} {profile.lastName}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {/* Display mutation error */}
+          {updateMutation.isError && (
+            <Alert variant="destructive" className="mb-4">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Error Updating Profile</AlertTitle>
+              <AlertDescription>
+                {getErrorMessage(updateMutation.error)}
+              </AlertDescription>
+            </Alert>
+          )}
+
+          <TechnicianForm 
+            initialData={profile} 
+            onSubmit={handleSubmit} 
+            isLoading={updateMutation.isLoading} 
+            error={null} // Clear form-level error if mutation fails (handled above)
+          />
+        </CardContent>
+      </Card>
     </div>
   );
 };

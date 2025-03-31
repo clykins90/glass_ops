@@ -9,9 +9,18 @@
 - [x] Verify/add dark mode styles for core UI components (`Card`, `Button`, `Input` - confirmed OK due to CSS vars)
 - [x] Add dark mode styles to `WorkOrders` page (table, inputs, badges, buttons)
 - [x] Refactor `ConfirmationDialog` to use `AlertDialog` for dark mode compatibility
+- [x] Add/Fix dark mode styles for `Table` components (`ui/table.tsx` and refactor usage).
+- [x] Update `Dashboard.tsx` charts to use CSS variables for theme-aware colors.
+- [x] Update base dark mode CSS variables for a darker, greyscale theme (`index.css`)
 - [ ] Add dark mode styles for other UI components (`Select`, `Toast`, etc.) as needed.
-- [ ] Add dark mode styles to specific page content areas as needed (review pages like Technicians, Dashboard, etc.).
-- [ ] Add tests for theme switching functionality (skipped for now).
+- Specific Page/Component Dark Mode Review:
+    - [x] Add/Review dark mode styles for `Technicians.tsx` page content.
+    - [x] Add/Review dark mode styles for `CustomerDetails.tsx` vehicles section & button.
+    - [x] Add/Review dark mode styles for `Vehicles.tsx` page content & button.
+    - [ ] Add/Review dark mode styles for other specific page content areas (e.g., Forms, `ProfilePage`, other detail views like `WorkOrderDetails`, `TechnicianDetails`, remaining `CustomerDetails` sections).
+- Button Consistency:
+    - [x] Ensure 'Add Vehicle'/'Add Customer' buttons use standard `<Button>` component.
+    - [ ] Review other action buttons (Edit, Delete, etc.) across pages for styling consistency in dark mode.
 
 ## Backend
 
@@ -24,4 +33,4 @@
 ## Documentation
 
 - [x] Update `frontend.md` with details about the new Theme context and dark mode implementation.
-- [ ] Update `frontend.md` or add `testing.md` regarding skipped theme tests. 
+- [ ] Review and update documentation (`frontend.md`, `backend.md`, etc.) after dark mode and UI consistency changes are complete.

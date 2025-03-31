@@ -16,6 +16,14 @@ import { Label } from '../components/ui/label';
 import { Button } from '../components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { useUsers } from '../context/UserContext';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '../components/ui/table';
 
 const ProfilePage = () => {
   const { user } = useAuth();
@@ -176,33 +184,33 @@ const ProfilePage = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="overflow-auto">
-                <table className="w-full text-sm text-left">
-                  <thead className="text-xs uppercase bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3">Resource</th>
-                      <th className="px-6 py-3">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody>
+              <div className="overflow-auto ring-1 ring-black ring-opacity-5 dark:ring-gray-700 rounded-lg">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Resource</TableHead>
+                      <TableHead>Action</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
                     {userRolePermissions.length > 0 ? (
                       userRolePermissions.map((permission, index) => (
-                        <tr key={index} className="bg-white border-b">
-                          <td className="px-6 py-4 capitalize">{permission.resource}</td>
-                          <td className="px-6 py-4 capitalize">{permission.action}</td>
-                        </tr>
+                        <TableRow key={index}>
+                          <TableCell className="capitalize">{permission.resource}</TableCell>
+                          <TableCell className="capitalize">{permission.action}</TableCell>
+                        </TableRow>
                       ))
                     ) : (
-                      <tr className="bg-white border-b">
-                        <td colSpan={2} className="px-6 py-4 text-center">
+                      <TableRow>
+                        <TableCell colSpan={2} className="text-center text-muted-foreground dark:text-gray-500">
                           No permissions found for your role.
-                        </td>
-                      </tr>
+                        </TableCell>
+                      </TableRow>
                     )}
-                  </tbody>
-                </table>
+                  </TableBody>
+                </Table>
               </div>
-              <div className="mt-4 text-sm text-gray-500">
+              <div className="mt-4 text-sm text-gray-500 dark:text-gray-400">
                 <p>If you believe you need additional permissions, please contact your system administrator.</p>
               </div>
             </CardContent>

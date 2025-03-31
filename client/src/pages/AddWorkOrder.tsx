@@ -1,21 +1,28 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useWorkOrders } from '../context/WorkOrderContext';
 import WorkOrderForm from '../components/forms/WorkOrderForm';
 import { WorkOrder } from '../types/workOrder';
+import { useToast } from "@/components/ui/use-toast";
 
 const AddWorkOrder = () => {
   const navigate = useNavigate();
   const { createWorkOrder } = useWorkOrders();
+  const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (data: Partial<WorkOrder>) => {
+    setIsSubmitting(true);
     try {
-      setIsSubmitting(true);
       const newWorkOrder = await createWorkOrder(data as Omit<WorkOrder, 'id' | 'createdAt' | 'updatedAt'>);
       navigate(`/work-orders/${newWorkOrder.id}`);
     } catch (error) {
       console.error('Error creating work order:', error);
+      toast({
+        variant: "destructive",
+        title: "Error Creating Work Order",
+        description: error instanceof Error ? error.message : "An unknown error occurred.",
+      });
       setIsSubmitting(false);
     }
   };

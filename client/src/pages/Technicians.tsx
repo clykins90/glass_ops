@@ -47,24 +47,27 @@ const Technicians = () => {
   return (
     <div className="p-4 md:p-8">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-semibold">Technicians</h1>
+        <h1 className="text-2xl font-semibold text-foreground">Technicians</h1>
         <Button onClick={() => navigate('/technicians/add')}>
           Add Technician
         </Button>
       </div>
 
-      <div className="bg-white shadow overflow-hidden sm:rounded-md">
-        <ul role="list" className="divide-y divide-gray-200">
+      <div className="bg-card shadow overflow-hidden sm:rounded-md border border-border">
+        <ul role="list" className="divide-y divide-border">
           {technicianProfiles.map((profile) => (
             <li key={profile.id}>
               <div className="px-4 py-4 sm:px-6 flex items-center justify-between">
                 <div className="flex items-center">
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-indigo-600 truncate cursor-pointer" onClick={() => navigate(`/technicians/${profile.id}`)}>
+                    <p 
+                      className="text-sm font-medium text-primary hover:text-primary/80 truncate cursor-pointer" 
+                      onClick={() => navigate(`/technicians/${profile.id}`)}
+                    >
                       {profile.firstName} {profile.lastName}
                     </p>
-                    <p className="mt-1 flex items-center text-sm text-gray-500">
-                      <svg className="flex-shrink-0 mr-1.5 h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                    <p className="mt-1 flex items-center text-sm text-muted-foreground">
+                      <svg className="flex-shrink-0 mr-1.5 h-5 w-5 text-gray-400 dark:text-gray-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                         <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
                         <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
                       </svg>
@@ -96,7 +99,7 @@ const Technicians = () => {
       </div>
 
       {technicianProfiles.length === 0 && (
-        <div className="text-center py-12 text-gray-500">
+        <div className="text-center py-12 text-muted-foreground">
           No technicians found.
         </div>
       )}

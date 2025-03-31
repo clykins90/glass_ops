@@ -245,12 +245,16 @@ const UserManagement: React.FC = () => {
                                   hasPermission(selectedRole, permission.resource, permission.action)
                                 )
                               }
+                              // Disable checkboxes if the role is admin (assuming admin has all permissions implicitly or managed differently)
+                              // disabled={selectedRole === 'admin'} 
                             />
+                            {/* Apply standard label styling */}
                             <label 
                               htmlFor={`${selectedRole}-${permission.resource}-${permission.action}`}
-                              className="text-sm font-medium capitalize"
+                              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                             >
-                              {permission.action} {permission.description ? `(${permission.description})` : ''}
+                              {permission.action.charAt(0).toUpperCase() + permission.action.slice(1)} {permission.resource} 
+                              {/* (e.g., Create work-orders) */}
                             </label>
                           </div>
                         ))}

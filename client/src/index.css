@@ -46,34 +46,37 @@
   }
  
   .dark {
-    --background: 0 0% 3.9%;
-    --foreground: 0 0% 98%;
+    /* Inspired by Linear's dark theme: Near-black backgrounds, subtle grey variations */
+    --background: 240 10% 3.9%; /* Very dark grey, near black */
+    --foreground: 0 0% 98%;    /* Almost white text */
  
-    --card: 0 0% 3.9%;
+    --card: 240 6% 9%;        /* Slightly lighter dark grey for cards */
     --card-foreground: 0 0% 98%;
  
-    --popover: 0 0% 3.9%;
+    --popover: 240 6% 9%;       /* Popovers match cards */
     --popover-foreground: 0 0% 98%;
  
-    --primary: 0 0% 98%;
-    --primary-foreground: 0 0% 9%;
+    --primary: 0 0% 98%;        /* Primary elements (like button text) remain light */
+    --primary-foreground: 240 5% 12%; /* Primary element background (button bg) darker grey */
  
-    --secondary: 0 0% 14.9%;
+    --secondary: 240 4% 12%;     /* Secondary bg: a bit lighter grey */
     --secondary-foreground: 0 0% 98%;
  
-    --muted: 0 0% 14.9%;
-    --muted-foreground: 0 0% 63.9%;
+    --muted: 240 4% 10%;        /* Muted bg: slightly darker than secondary */
+    --muted-foreground: 0 0% 60%; /* Muted text: dimmer grey */
  
-    --accent: 0 0% 14.9%;
+    --accent: 240 4% 12%;       /* Accent bg: same as secondary for consistency */
     --accent-foreground: 0 0% 98%;
  
-    --destructive: 0 62.8% 30.6%;
+    --destructive: 0 62.8% 30.6%; /* Keep destructive colors, adjust if needed later */
     --destructive-foreground: 0 0% 98%;
  
-    --border: 0 0% 14.9%;
-    --input: 0 0% 14.9%;
-    --ring: 0 0% 83.1%;
-    --chart-1: 220 70% 50%;
+    --border: 240 4% 12%;       /* Borders match secondary/accent bg */
+    --input: 240 4% 12%;        /* Input background matches border */
+    --ring: 0 0% 83.1%;         /* Ring color (focus) - can keep light grey or use a subtle blue later */
+
+    /* Keep chart colors for now, review if they clash */
+    --chart-1: 220 70% 50%; 
     --chart-2: 160 60% 45%;
     --chart-3: 30 80% 55%;
     --chart-4: 280 65% 60%;

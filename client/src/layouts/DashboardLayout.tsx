@@ -67,33 +67,36 @@ const DashboardLayout = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 dark:bg-gray-900">
-      {/* Header */}
-      <header className="bg-white dark:bg-gray-800 shadow dark:shadow-gray-700">
+    <div className="min-h-screen bg-background">
+      {/* Header: Use bg-card, border-b, text-foreground */}
+      <header className="bg-card border-b border-border shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex h-16 items-center">
             <div className="flex">
               <div className="flex-shrink-0 flex items-center">
-                <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">GlassOps</h1>
+                <h1 className="text-xl font-bold text-foreground">GlassOps</h1>
               </div>
             </div>
             {user && !authLoading && (
               <div className="ml-auto flex items-center gap-2 text-sm">
-                <div className="text-gray-500 dark:text-gray-400">
+                {/* Use text-muted-foreground */}
+                <div className="text-muted-foreground">
                   Logged in as: {user.email} {profile?.role ? `(${profile.role})` : user.role && `(${user.role})`}
                 </div>
+                {/* Use text-primary for link */}
                 <Link 
                   to="/profile" 
-                  className="flex items-center gap-1 text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
+                  className="flex items-center gap-1 text-primary hover:text-primary/80"
                   title="View/Edit Profile"
                 >
                   <UserCircle size={18} />
                   <span className="hidden md:inline">Profile</span>
                 </Link>
+                {/* Use Button variant and theme text */}
                 <Button 
                    variant="ghost"
                    size="sm"
-                   className="flex items-center gap-1 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100"
+                   className="flex items-center gap-1 text-muted-foreground hover:text-foreground"
                    onClick={handleLogout}
                    disabled={authLoading}
                    title="Logout"
@@ -106,10 +109,10 @@ const DashboardLayout = () => {
             )}
             {authLoading && (
               <div className="ml-auto flex items-center gap-2 text-sm">
-                <div className="animate-pulse h-4 w-24 bg-gray-300 dark:bg-gray-600 rounded"></div>
-                <div className="animate-pulse h-8 w-16 bg-gray-300 dark:bg-gray-600 rounded"></div>
-                <div className="animate-pulse h-8 w-16 bg-gray-300 dark:bg-gray-600 rounded"></div>
-                <div className="animate-pulse h-8 w-10 bg-gray-300 dark:bg-gray-600 rounded"></div>
+                <div className="animate-pulse h-4 w-24 bg-muted rounded"></div>
+                <div className="animate-pulse h-8 w-16 bg-muted rounded"></div>
+                <div className="animate-pulse h-8 w-16 bg-muted rounded"></div>
+                <div className="animate-pulse h-8 w-10 bg-muted rounded"></div>
               </div>
             )}
           </div>
@@ -117,18 +120,18 @@ const DashboardLayout = () => {
       </header>
       
       <div className="flex">
-        {/* Sidebar */}
-        <aside className="w-64 bg-white dark:bg-gray-800 shadow h-[calc(100vh-4rem)] sticky top-16 flex flex-col">
+        {/* Sidebar: Use bg-card, border-r */}
+        <aside className="w-64 bg-card border-r border-border h-[calc(100vh-4rem)] sticky top-16 flex flex-col">
           <nav className="mt-5 px-2 flex-grow overflow-y-auto">
             <ul className="space-y-1">
               {navItems.map((item) => (
                 <li key={item.path}>
                   <Link
                     to={item.path}
-                    className={`group flex items-center px-2 py-2 text-sm font-medium rounded-md ${
-                      location.pathname.startsWith(item.path)
-                        ? 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white'
-                        : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white'
+                    className={`group flex items-center px-2 py-2 text-sm font-medium rounded-md ${ 
+                      location.pathname === item.path || (item.path !== '/' && location.pathname.startsWith(item.path))
+                        ? 'bg-muted text-foreground' 
+                        : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
                     }`}
                   >
                     {item.label}
@@ -139,7 +142,7 @@ const DashboardLayout = () => {
           </nav>
         </aside>
         
-        {/* Main content */}
+        {/* Main content area already uses bg-background from parent */}
         <main className="flex-1 py-6 px-4 sm:px-6 lg:px-8 overflow-y-auto h-[calc(100vh-4rem)]">
           <div>
             <Outlet />

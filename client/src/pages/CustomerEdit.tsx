@@ -3,6 +3,10 @@ import { useParams, useNavigate } from 'react-router-dom';
 import CustomerForm from '../components/forms/CustomerForm';
 import { Customer } from '../types/customer';
 import { customerApi } from '../services/api';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
+import { AlertCircle, Loader2 } from 'lucide-react';
 
 const CustomerEdit: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -13,16 +17,25 @@ const CustomerEdit: React.FC = () => {
   
   useEffect(() => {
     const fetchCustomer = async () => {
+      setLoading(true); // Ensure loading is true at start
+      setError(null); // Clear previous errors
       try {
         if (!id) {
           throw new Error('Customer ID is required');
         }
+        const customerId = parseInt(id, 10);
+        if (isNaN(customerId)) {
+          throw new Error('Invalid Customer ID format');
+        }
         
-        const data = await customerApi.getById(parseInt(id, 10));
+        const data = await customerApi.getById(customerId);
+        if (!data) { // Handle case where API returns null/undefined for not found
+          throw new Error('Customer not found.');
+        }
         setCustomer(data);
       } catch (err) {
         console.error('Error fetching customer:', err);
-        setError('Failed to load customer. Please try again.');
+        setError(err instanceof Error ? err.message : 'Failed to load customer. Please try again.');
       } finally {
         setLoading(false);
       }
@@ -32,58 +45,57 @@ const CustomerEdit: React.FC = () => {
   }, [id]);
   
   const handleCancel = () => {
-    navigate(`/customers/${id}`);
+    // Navigate back to customer details or list if ID is somehow lost
+    navigate(id ? `/customers/${id}` : '/customers');
   };
   
   const handleSuccess = (updatedCustomer: Customer) => {
     navigate(`/customers/${updatedCustomer.id}`);
   };
   
+  // Loading state using themed components
   if (loading) {
     return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="flex justify-center items-center h-64">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
-            <p className="mt-4 text-gray-600">Loading customer data...</p>
-          </div>
-        </div>
+      <div className="py-8 flex justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
     );
   }
   
-  if (error || !customer) {
+  // Error state using themed components
+  if (error || !customer) { // Check !customer again in case API returned null
     return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="bg-red-50 p-4 rounded-md border border-red-200 mb-6">
-          <p className="text-red-700">{error || 'Customer not found'}</p>
-        </div>
-        <button
-          onClick={() => navigate('/customers')}
-          className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-        >
-          Back to Customers
-        </button>
+      <div className="py-8 max-w-md mx-auto space-y-4">
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Error Loading Customer</AlertTitle>
+          <AlertDescription>{error || 'Customer data could not be retrieved.'}</AlertDescription>
+        </Alert>
+        <Button onClick={() => navigate('/customers')} variant="outline">
+          Back to Customers List
+        </Button>
       </div>
     );
   }
   
+  // Main content using Card and themed form
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Edit Customer</h1>
-        <p className="text-gray-600">
-          Editing {customer.firstName} {customer.lastName}
-        </p>
-      </div>
-      
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <CustomerForm
-          initialData={customer}
-          onCancel={handleCancel}
-          onSuccess={handleSuccess}
-        />
-      </div>
+    <div className="py-8">
+      <Card className="max-w-2xl mx-auto">
+        <CardHeader>
+          <CardTitle className="text-2xl">Edit Customer</CardTitle>
+          <CardDescription>
+            Editing {customer.firstName} {customer.lastName}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <CustomerForm
+            initialData={customer}
+            onCancel={handleCancel}
+            onSuccess={handleSuccess}
+          />
+        </CardContent>
+      </Card>
     </div>
   );
 };

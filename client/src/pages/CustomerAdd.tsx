@@ -1,6 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import CustomerForm from '../components/forms/CustomerForm';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 
 const CustomerAdd: React.FC = () => {
   const navigate = useNavigate();
@@ -10,15 +11,16 @@ const CustomerAdd: React.FC = () => {
   };
   
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Add New Customer</h1>
-        <p className="text-gray-600">Create a new customer or lead record</p>
-      </div>
-      
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <CustomerForm onCancel={handleCancel} />
-      </div>
+    <div className="py-8">
+      <Card className="max-w-2xl mx-auto">
+        <CardHeader>
+          <CardTitle className="text-2xl">Add New Customer</CardTitle>
+          <CardDescription>Create a new customer or lead record</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <CustomerForm onCancel={handleCancel} />
+        </CardContent>
+      </Card>
     </div>
   );
 };
