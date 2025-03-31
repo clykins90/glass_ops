@@ -38,6 +38,7 @@ describe('WorkOrder Controller', () => {
 
   describe('getAllWorkOrders', () => {
     it('should return all work orders', async () => {
+      (mockReq as any).user = { company_id: 1 };
       const mockWorkOrders = [
         { id: 1, customerId: 1, vehicleId: 1, technicianId: 1, status: 'pending' },
         { id: 2, customerId: 2, vehicleId: 2, technicianId: 2, status: 'completed' }
@@ -51,7 +52,7 @@ describe('WorkOrder Controller', () => {
 
       await getAllWorkOrders(mockReq as Request, mockRes as Response);
 
-      expect(mockFrom).toHaveBeenCalledWith('WorkOrder');
+      expect(mockFrom).toHaveBeenCalledWith('work_orders');
       expect(mockJson).toHaveBeenCalledWith(mockWorkOrders);
     });
 
@@ -76,6 +77,7 @@ describe('WorkOrder Controller', () => {
 
   describe('getWorkOrderById', () => {
     it('should return a work order by ID', async () => {
+      (mockReq as any).user = { company_id: 1 };
       const mockWorkOrder = { 
         id: 1, 
         customerId: 1, 
@@ -95,7 +97,7 @@ describe('WorkOrder Controller', () => {
 
       await getWorkOrderById(mockReq as Request, mockRes as Response);
 
-      expect(mockFrom).toHaveBeenCalledWith('WorkOrder');
+      expect(mockFrom).toHaveBeenCalledWith('work_orders');
       expect(mockJson).toHaveBeenCalledWith(mockWorkOrder);
     });
 
@@ -122,6 +124,7 @@ describe('WorkOrder Controller', () => {
 
   describe('createWorkOrder', () => {
     it('should create a new work order', async () => {
+      (mockReq as any).user = { company_id: 1 };
       const mockWorkOrderData = {
         customerId: 1,
         vehicleId: 1,
@@ -155,7 +158,7 @@ describe('WorkOrder Controller', () => {
 
       await createWorkOrder(mockReq as Request, mockRes as Response);
 
-      expect(mockFrom).toHaveBeenCalledWith('WorkOrder');
+      expect(mockFrom).toHaveBeenCalledWith('work_orders');
       expect(mockStatus).toHaveBeenCalledWith(201);
       expect(mockJson).toHaveBeenCalledWith(mockNewWorkOrder);
     });
@@ -187,6 +190,7 @@ describe('WorkOrder Controller', () => {
 
   describe('updateWorkOrder', () => {
     it('should update a work order', async () => {
+      (mockReq as any).user = { company_id: 1 };
       const mockWorkOrderData = {
         status: 'completed',
         notes: 'Work completed successfully'
@@ -218,7 +222,7 @@ describe('WorkOrder Controller', () => {
 
       await updateWorkOrder(mockReq as Request, mockRes as Response);
 
-      expect(mockFrom).toHaveBeenCalledWith('WorkOrder');
+      expect(mockFrom).toHaveBeenCalledWith('work_orders');
       expect(mockJson).toHaveBeenCalledWith(mockUpdatedWorkOrder);
     });
 
@@ -246,6 +250,7 @@ describe('WorkOrder Controller', () => {
 
   describe('deleteWorkOrder', () => {
     it('should delete a work order', async () => {
+      (mockReq as any).user = { company_id: 1 };
       mockReq.params = { id: '1' };
 
       mockFrom.mockImplementation(() => ({
@@ -261,7 +266,7 @@ describe('WorkOrder Controller', () => {
 
       await deleteWorkOrder(mockReq as Request, mockRes as Response);
 
-      expect(mockFrom).toHaveBeenCalledWith('WorkOrder');
+      expect(mockFrom).toHaveBeenCalledWith('work_orders');
       expect(mockStatus).toHaveBeenCalledWith(204);
       expect(mockSend).toHaveBeenCalled();
     });
@@ -289,6 +294,7 @@ describe('WorkOrder Controller', () => {
 
   describe('updateWorkOrderStatus', () => {
     it('should update work order status', async () => {
+      (mockReq as any).user = { company_id: 1 };
       const mockWorkOrder = { 
         id: 1, 
         status: 'in-progress' 
@@ -313,7 +319,7 @@ describe('WorkOrder Controller', () => {
 
       await updateWorkOrderStatus(mockReq as Request, mockRes as Response);
 
-      expect(mockFrom).toHaveBeenCalledWith('WorkOrder');
+      expect(mockFrom).toHaveBeenCalledWith('work_orders');
       expect(mockJson).toHaveBeenCalledWith(mockWorkOrder);
     });
 
@@ -341,6 +347,7 @@ describe('WorkOrder Controller', () => {
 
   describe('assignTechnician', () => {
     it('should assign a technician to a work order', async () => {
+      (mockReq as any).user = { company_id: 1 };
       const mockWorkOrder = { 
         id: 1, 
         technicianId: 1 
@@ -376,7 +383,7 @@ describe('WorkOrder Controller', () => {
 
       await assignTechnician(mockReq as Request, mockRes as Response);
 
-      expect(mockFrom).toHaveBeenCalledWith('WorkOrder');
+      expect(mockFrom).toHaveBeenCalledWith('work_orders');
       expect(mockJson).toHaveBeenCalledWith(mockWorkOrder);
     });
 
@@ -404,6 +411,7 @@ describe('WorkOrder Controller', () => {
 
   describe('scheduleWorkOrder', () => {
     it('should schedule a work order', async () => {
+      (mockReq as any).user = { company_id: 1 };
       const mockWorkOrder = { 
         id: 1, 
         scheduledDate: '2024-03-20',
@@ -429,7 +437,7 @@ describe('WorkOrder Controller', () => {
 
       await scheduleWorkOrder(mockReq as Request, mockRes as Response);
 
-      expect(mockFrom).toHaveBeenCalledWith('WorkOrder');
+      expect(mockFrom).toHaveBeenCalledWith('work_orders');
       expect(mockJson).toHaveBeenCalledWith(mockWorkOrder);
     });
 

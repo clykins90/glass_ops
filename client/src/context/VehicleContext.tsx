@@ -2,6 +2,8 @@ import React, { createContext, useContext, useState, ReactNode } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { vehicleApi } from '../services/api';
 import { Vehicle } from '../types/vehicle';
+import { useAuth } from './AuthContext';
+import { isAuthError } from '../services/api';
 
 // Define the context type
 interface VehicleContextType {
@@ -27,17 +29,39 @@ interface VehicleProviderProps {
 export const VehicleProvider: React.FC<VehicleProviderProps> = ({ children }) => {
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
   const queryClient = useQueryClient();
+  const { session } = useAuth();
 
   // Fetch vehicles
-  const { data: vehicles = [], isLoading, error } = useQuery({
+  const { data: vehiclesData = [], isLoading, error } = useQuery({
     queryKey: ['vehicles'],
-    queryFn: () => vehicleApi.getAll(),
+    queryFn: async () => {
+      const data = await vehicleApi.getAll();
+      return data as Vehicle[];
+    },
+    // Only run query if user is authenticated
+    enabled: !!session,
+    // Don't retry on authentication errors
+    retry: (count, error) => {
+      if (isAuthError(error)) return false;
+      return count < 3; // Default retry logic for other errors
+    },
+    // Suppress console errors for auth errors
+    onError: (error) => {
+      if (!isAuthError(error)) {
+        console.error('Error fetching vehicles:', error);
+      }
+    }
   });
 
+  // Type-safe access to vehicles
+  const vehicles = vehiclesData as Vehicle[];
+  
   // Create vehicle mutation
   const createMutation = useMutation({
-    mutationFn: (newVehicle: Omit<Vehicle, 'id' | 'createdAt' | 'updatedAt'>) => 
-      vehicleApi.create(newVehicle),
+    mutationFn: async (newVehicle: Omit<Vehicle, 'id' | 'createdAt' | 'updatedAt'>) => {
+      const result = await vehicleApi.create(newVehicle);
+      return result as Vehicle;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['vehicles'] });
     },
@@ -45,8 +69,10 @@ export const VehicleProvider: React.FC<VehicleProviderProps> = ({ children }) =>
 
   // Update vehicle mutation
   const updateMutation = useMutation({
-    mutationFn: ({ id, vehicle }: { id: number; vehicle: Partial<Vehicle> }) => 
-      vehicleApi.update(id, vehicle),
+    mutationFn: async ({ id, vehicle }: { id: number; vehicle: Partial<Vehicle> }) => {
+      const result = await vehicleApi.update(id, vehicle);
+      return result as Vehicle;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['vehicles'] });
     },
@@ -62,24 +88,38 @@ export const VehicleProvider: React.FC<VehicleProviderProps> = ({ children }) =>
   });
 
   // Create vehicle function
-  const createVehicle = async (vehicle: Omit<Vehicle, 'id' | 'createdAt' | 'updatedAt'>) => {
-    return createMutation.mutateAsync(vehicle);
+  const createVehicle = async (vehicle: Omit<Vehicle, 'id' | 'createdAt' | 'updatedAt'>): Promise<Vehicle> => {
+    if (!session) {
+      throw new Error('No active session');
+    }
+    const result = await createMutation.mutateAsync(vehicle);
+    return result as Vehicle;
   };
 
   // Update vehicle function
-  const updateVehicle = async (id: number, vehicle: Partial<Vehicle>) => {
-    return updateMutation.mutateAsync({ id, vehicle });
+  const updateVehicle = async (id: number, vehicle: Partial<Vehicle>): Promise<Vehicle> => {
+    if (!session) {
+      throw new Error('No active session');
+    }
+    const result = await updateMutation.mutateAsync({ id, vehicle });
+    return result as Vehicle;
   };
 
   // Delete vehicle function
-  const deleteVehicle = async (id: number) => {
+  const deleteVehicle = async (id: number): Promise<void> => {
+    if (!session) {
+      throw new Error('No active session');
+    }
     await deleteMutation.mutateAsync(id);
   };
 
   // Get customer vehicles function
-  const getCustomerVehicles = async (customerId: number) => {
-    const customerVehicles = vehicles.filter(vehicle => vehicle.customerId === customerId);
-    return customerVehicles;
+  const getCustomerVehicles = async (customerId: number): Promise<Vehicle[]> => {
+    if (!session) {
+      return [];
+    }
+    const customerVehicles = vehicles.filter(vehicle => (vehicle as Vehicle).customerId === customerId);
+    return customerVehicles as Vehicle[];
   };
 
   // Context value

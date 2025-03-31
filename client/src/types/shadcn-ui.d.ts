@@ -82,4 +82,36 @@ declare module '../components/ui/use-toast' {
     (props: any): void;
     dismiss: (toastId?: string) => void;
   };
+}
+
+declare module '@/components/ui/input' {
+  export const Input: React.ComponentType<any>;
+}
+
+declare module '../components/ui/input' {
+  export const Input: React.ComponentType<any>;
+}
+
+declare module '@/components/ui/label' {
+  export const Label: React.ComponentType<any>;
+}
+
+declare module '../components/ui/label' {
+  export const Label: React.ComponentType<any>;
+}
+
+declare module '@/components/ui/textarea' {
+  export const Textarea: React.ComponentType<any>;
+}
+
+declare module '../components/ui/textarea' {
+  export const Textarea: React.ComponentType<any>;
+}
+
+declare module '@/components/ui/switch' {
+  export const Switch: React.ComponentType<any>;
+}
+
+declare module '../components/ui/switch' {
+  export const Switch: React.ComponentType<any>;
 } 

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Customer } from '../../types/customer';
+import { Customer } from '../../types';
 import { customerApi } from '../../services/api';
 import { useNavigate } from 'react-router-dom';
 
@@ -90,12 +90,12 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
     setIsSubmitting(true);
     
     try {
-      let customer;
+      let customer: Customer;
       
       if (isEditing && initialData?.id) {
-        customer = await customerApi.update(initialData.id, formData);
+        customer = await customerApi.update(initialData.id, formData) as Customer;
       } else {
-        customer = await customerApi.create(formData);
+        customer = await customerApi.create(formData) as Customer;
       }
       
       if (onSuccess) {

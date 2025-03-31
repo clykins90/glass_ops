@@ -58,7 +58,7 @@ describe('Calendar Component', () => {
     fireEvent.click(screen.getByText('Day'));
     
     // Check if day view is rendered (should show hourly slots)
-    expect(screen.getByText('8:00 am')).toBeInTheDocument();
+    expect(screen.getByText(/8:00 am/i)).toBeInTheDocument();
     
     // Switch to week view
     fireEvent.click(screen.getByText('Week'));

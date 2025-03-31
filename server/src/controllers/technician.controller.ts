@@ -8,9 +8,10 @@ import { supabase } from '../utils/supabase';
 export const getAllTechnicians = async (req: Request, res: Response) => {
   try {
     const { data: technicians, error } = await supabase
-      .from('Technician')
+      .from('profiles')
       .select('*')
-      .order('lastName', { ascending: true });
+      .match({ role: 'Technician', company_id: (req as any).user.company_id })
+      .order('full_name', { ascending: true });
 
     if (error) throw error;
 
@@ -25,22 +26,22 @@ export const getAllTechnicians = async (req: Request, res: Response) => {
 };
 
 /**
- * Get a single technician by ID
+ * Get a single technician (profile) by ID
  * @route GET /api/technicians/:id
  */
 export const getTechnicianById = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const { data: technician, error } = await supabase
-      .from('Technician')
+      .from('profiles')
       .select('*')
-      .eq('id', id)
+      .match({ id: id, role: 'Technician', company_id: (req as any).user.company_id })
       .single();
 
     if (error) {
       if (error.code === 'PGRST116') {
         return res.status(404).json({
-          error: 'Technician not found'
+          error: 'Technician profile not found or not accessible'
         });
       }
       throw error;
@@ -57,32 +58,49 @@ export const getTechnicianById = async (req: Request, res: Response) => {
 };
 
 /**
- * Create a new technician
+ * Create a new technician (profile)
+ * NOTE: This is a temporary implementation. Ideally, this should use Supabase Auth
+ * to create a user, which triggers profile creation.
  * @route POST /api/technicians
  */
 export const createTechnician = async (req: Request, res: Response) => {
   try {
-    const technicianData = req.body;
-    const { data: newTechnician, error } = await supabase
-      .from('Technician')
+    // Assuming technicianData includes firstName, lastName, email, phone, etc.
+    const technicianData = { 
+      ...req.body, 
+      role: 'Technician', // Set role explicitly
+      company_id: (req as any).user.company_id // Set company_id from requesting user
+    };
+    
+    // We might need to generate a UUID or handle the ID differently if it's 
+    // meant to link to auth.users eventually. For now, assume it's auto-generated or handled.
+    // Remove potentially conflicting fields like 'id' if present in req.body
+    delete technicianData.id; 
+
+    const { data: newTechnicianProfile, error } = await supabase
+      .from('profiles')
       .insert([technicianData])
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error('Supabase insert error:', error);
+      // Handle potential specific errors like duplicate email if needed
+      throw error;
+    }
 
-    res.status(201).json(newTechnician);
+    res.status(201).json(newTechnicianProfile);
   } catch (error: any) {
-    console.error('Error creating technician:', error);
+    console.error('Error creating technician profile:', error);
     res.status(500).json({
-      error: 'Failed to create technician',
+      error: 'Failed to create technician profile',
       details: error.message
     });
   }
 };
 
 /**
- * Update a technician
+ * Update a technician (profile)
  * @route PUT /api/technicians/:id
  */
 export const updateTechnician = async (req: Request, res: Response) => {
@@ -90,26 +108,30 @@ export const updateTechnician = async (req: Request, res: Response) => {
     const { id } = req.params;
     const technicianData = req.body;
 
-    // Check if technician exists
+    // Cannot change role or company_id via this endpoint
+    delete technicianData.role;
+    delete technicianData.company_id;
+    delete technicianData.id; // Don't allow updating the ID itself
+
+    // Check if technician profile exists
     const { data: existingTechnician, error: checkError } = await supabase
-      .from('Technician')
-      .select()
-      .eq('id', id)
+      .from('profiles')
+      .select('id')
+      .match({ id: id, role: 'Technician', company_id: (req as any).user.company_id })
       .single();
 
-    if (checkError) {
-      if (checkError.code === 'PGRST116') {
-        return res.status(404).json({
-          error: 'Technician not found'
-        });
-      }
-      throw checkError;
+    if (checkError || !existingTechnician) {
+      console.error('Error checking technician profile for update:', checkError);
+      return res.status(404).json({
+        error: 'Technician profile not found or not accessible for update'
+      });
     }
 
+    // Perform the update
     const { data: updatedTechnician, error } = await supabase
-      .from('Technician')
+      .from('profiles')
       .update(technicianData)
-      .eq('id', id)
+      .match({ id: id, role: 'Technician', company_id: (req as any).user.company_id })
       .select()
       .single();
 
@@ -117,50 +139,60 @@ export const updateTechnician = async (req: Request, res: Response) => {
 
     res.json(updatedTechnician);
   } catch (error: any) {
-    console.error('Error updating technician:', error);
+    console.error('Error updating technician profile:', error);
     res.status(500).json({
-      error: 'Failed to update technician',
+      error: 'Failed to update technician profile',
       details: error.message
     });
   }
 };
 
 /**
- * Delete a technician
+ * Delete a technician (profile)
+ * NOTE: This is temporary. Ideally, uses Supabase Auth admin.deleteUser,
+ * which might cascade or require manual profile deletion.
  * @route DELETE /api/technicians/:id
  */
 export const deleteTechnician = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
 
-    // Check if technician exists
+    // Check if technician profile exists
     const { data: existingTechnician, error: checkError } = await supabase
-      .from('Technician')
-      .select()
-      .eq('id', id)
+      .from('profiles')
+      .select('id')
+      .match({ id: id, role: 'Technician', company_id: (req as any).user.company_id })
       .single();
 
-    if (checkError) {
-      if (checkError.code === 'PGRST116') {
-        return res.status(404).json({
-          error: 'Technician not found'
-        });
-      }
-      throw checkError;
+    if (checkError || !existingTechnician) {
+      console.error('Error checking technician profile for delete:', checkError);
+      return res.status(404).json({
+        error: 'Technician profile not found or not accessible for deletion'
+      });
     }
+    
+    // TODO: Handle unassigning technician from work orders before deletion?
+    // This depends on FK constraints (e.g., ON DELETE SET NULL)
+    /*
+    await supabase
+      .from('work_orders')
+      .update({ assigned_technician_id: null })
+      .eq('assigned_technician_id', id);
+    */
 
+    // Perform the delete
     const { error } = await supabase
-      .from('Technician')
+      .from('profiles')
       .delete()
-      .eq('id', id);
+      .match({ id: id, role: 'Technician', company_id: (req as any).user.company_id });
 
     if (error) throw error;
 
     res.status(204).send();
   } catch (error: any) {
-    console.error('Error deleting technician:', error);
+    console.error('Error deleting technician profile:', error);
     res.status(500).json({
-      error: 'Failed to delete technician',
+      error: 'Failed to delete technician profile',
       details: error.message
     });
   }
@@ -174,30 +206,28 @@ export const getTechnicianWorkOrders = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
 
-    // Check if technician exists
+    // Check if technician profile exists
     const { data: existingTechnician, error: checkError } = await supabase
-      .from('Technician')
-      .select()
-      .eq('id', id)
+      .from('profiles')
+      .select('id')
+      .match({ id: id, role: 'Technician', company_id: (req as any).user.company_id })
       .single();
 
-    if (checkError) {
-      if (checkError.code === 'PGRST116') {
-        return res.status(404).json({
-          error: 'Technician not found'
-        });
-      }
-      throw checkError;
+    if (checkError || !existingTechnician) {
+      return res.status(404).json({
+        error: 'Technician profile not found or not accessible'
+      });
     }
 
+    // Fetch work orders assigned to this technician
     const { data: workOrders, error } = await supabase
-      .from('WorkOrder')
+      .from('work_orders')
       .select(`
         *,
-        customer:customerId (*),
-        vehicle:vehicleId (*)
+        customers(id, firstName, lastName),
+        vehicles(id, make, model, year)
       `)
-      .eq('technicianId', id)
+      .match({ assigned_technician_id: id, company_id: (req as any).user.company_id })
       .order('scheduledDate', { ascending: true });
 
     if (error) throw error;
@@ -213,7 +243,7 @@ export const getTechnicianWorkOrders = async (req: Request, res: Response) => {
 };
 
 /**
- * Get the schedule for a technician
+ * Get the schedule (upcoming, non-completed work orders) for a technician
  * @route GET /api/technicians/:id/schedule
  */
 export const getTechnicianSchedule = async (req: Request, res: Response) => {
@@ -221,60 +251,55 @@ export const getTechnicianSchedule = async (req: Request, res: Response) => {
     const { id } = req.params;
     const { fromDate, toDate } = req.query;
     
-    // Check if technician exists
-    const existingTechnician = await supabase
-      .from('Technician')
-      .select()
-      .eq('id', id)
+    // Check if technician profile exists
+    const { data: existingTechnician, error: checkError } = await supabase
+      .from('profiles')
+      .select('id')
+      .match({ id: id, role: 'Technician', company_id: (req as any).user.company_id })
       .single();
     
-    if (existingTechnician.error) {
-      return res.status(404).json({ error: 'Technician not found' });
+    if (checkError || !existingTechnician) {
+      return res.status(404).json({ error: 'Technician profile not found or not accessible' });
     }
     
-    // Build date filter
+    // Build date filter logic (remains the same)
     const dateFilter: any = {};
-    
+    let gteDate: Date;
+    let lteDate: Date;
+
     if (fromDate) {
-      dateFilter.gte = new Date(fromDate as string);
+      gteDate = new Date(fromDate as string);
     } else {
       // Default to today if no fromDate provided
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      dateFilter.gte = today;
+      gteDate = new Date();
+      gteDate.setHours(0, 0, 0, 0);
     }
     
     if (toDate) {
-      dateFilter.lte = new Date(toDate as string);
-    } else if (fromDate) {
-      // Default to 7 days from fromDate if no toDate provided
-      const endDate = new Date(fromDate as string);
-      endDate.setDate(endDate.getDate() + 7);
-      dateFilter.lte = endDate;
+      lteDate = new Date(toDate as string);
     } else {
-      // Default to 7 days from today if no dates provided
-      const endDate = new Date();
-      endDate.setDate(endDate.getDate() + 7);
-      dateFilter.lte = endDate;
+      // Default to 7 days from gteDate if no toDate provided
+      lteDate = new Date(gteDate);
+      lteDate.setDate(lteDate.getDate() + 7);
     }
     
-    // Get technician schedule
-    const schedule = await supabase
-      .from('WorkOrder')
+    // Get technician schedule from work_orders
+    const { data: schedule, error } = await supabase
+      .from('work_orders')
       .select(`
         *,
-        customer:customerId (*),
-        vehicle:vehicleId (*)
+        customers(id, firstName, lastName),
+        vehicles(id, make, model, year)
       `)
-      .eq('technicianId', id)
-      .gte('scheduledDate', dateFilter.gte)
-      .lte('scheduledDate', dateFilter.lte)
+      .match({ assigned_technician_id: id, company_id: (req as any).user.company_id })
+      .gte('scheduledDate', gteDate.toISOString())
+      .lte('scheduledDate', lteDate.toISOString())
       .not('status', 'in', ['completed', 'cancelled'])
       .order('scheduledDate', { ascending: true });
     
-    if (schedule.error) throw schedule.error;
+    if (error) throw error;
     
-    res.json(schedule.data);
+    res.json(schedule);
   } catch (error: any) {
     console.error('Error fetching technician schedule:', error);
     res.status(500).json({

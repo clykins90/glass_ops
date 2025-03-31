@@ -1,114 +1,153 @@
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+import { supabase } from '../lib/supabaseClient';
 
-// Generic fetch function with error handling
-async function fetchApi<T>(endpoint: string, options?: RequestInit): Promise<T> {
-  console.log(`API Request: ${endpoint}`);
+// Check if we're in a test environment
+const isTest = typeof jest !== 'undefined';
+
+// Use fallback URL for tests
+const API_URL = isTest ? 'http://test-api-url.com/api' : (import.meta.env.VITE_API_URL || 'http://localhost:3001/api');
+
+// Helper function to check if an error is an authentication error
+export const isAuthError = (error: any): boolean => {
+  // Check for common auth error patterns
+  if (error instanceof Error) {
+    const message = error.message.toLowerCase();
+    return message.includes('unauthorized') || 
+           message.includes('authentication') || 
+           message.includes('forbidden') ||
+           message.includes('auth error') ||
+           message.includes('token');
+  }
+  return false;
+};
+
+// API request wrapper
+const apiRequest = async <T>(
+  endpoint: string,
+  options: RequestInit = {}
+): Promise<T> => {
+  // Set default headers
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...options.headers as Record<string, string>,
+  };
+
   try {
-    const response = await fetch(`${API_URL}${endpoint}`, {
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      credentials: 'include',
-      ...options,
-    });
-
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({}));
-      console.error(`API Error (${endpoint}):`, error);
-      throw new Error(error.message || `API error: ${response.status}`);
+    // Get token from Supabase session
+    const { data: sessionData } = await supabase.auth.getSession();
+    const token = sessionData.session?.access_token;
+    
+    console.log("API Request to", endpoint, "Token exists:", !!token);
+    
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    } else {
+      console.warn(`Making unauthenticated request to ${endpoint} - this may fail if authentication is required`);
     }
 
-    const data = await response.json();
-    console.log(`API Response (${endpoint}):`, data);
-    return data;
+    // Make the request
+    const response = await fetch(`${API_URL}/${endpoint}`, {
+      ...options,
+      headers,
+    });
+
+    // Check if the response is OK
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      const errorMessage = errorData.message || errorData.error || `API Error: ${response.status}`;
+      
+      if (response.status === 401) {
+        console.error(`Authentication error for ${endpoint}:`, errorMessage);
+        // Consider refreshing the session or redirecting to login here
+      }
+      
+      throw new Error(errorMessage);
+    }
+
+    // Return the response data
+    if (response.status !== 204) {
+      return response.json();
+    }
+    
+    return {} as T;
   } catch (error) {
-    console.error(`API Exception (${endpoint}):`, error);
+    console.error(`API request to ${endpoint} failed:`, error);
     throw error;
   }
-}
+};
 
-// Customer API
-export const customerApi = {
-  getAll: () => fetchApi<any[]>('/customers'),
-  getById: (id: number) => fetchApi<any>(`/customers/${id}`),
-  create: (data: any) => fetchApi<any>('/customers', {
-    method: 'POST',
-    body: JSON.stringify(data),
-  }),
-  update: (id: number, data: any) => fetchApi<any>(`/customers/${id}`, {
-    method: 'PUT',
-    body: JSON.stringify(data),
-  }),
-  delete: (id: number) => {
-    console.log(`Deleting customer with ID: ${id}`);
-    return fetchApi<any>(`/customers/${id}`, {
+// Generic CRUD operations
+const createCrudApi = <T>(entityPath: string) => ({
+  getAll: async (): Promise<T[]> => 
+    apiRequest<T[]>(entityPath),
+  
+  getById: async (id: string | number): Promise<T> => 
+    apiRequest<T>(`${entityPath}/${id}`),
+  
+  create: async (data: Partial<T>): Promise<T> => 
+    apiRequest<T>(entityPath, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  
+  update: async (id: string | number, data: Partial<T>): Promise<T> => 
+    apiRequest<T>(`${entityPath}/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+  
+  delete: async (id: string | number): Promise<void> => 
+    apiRequest<void>(`${entityPath}/${id}`, {
       method: 'DELETE',
-    });
-  },
-  getWorkOrders: (id: number) => fetchApi<any[]>(`/customers/${id}/workorders`),
-  getVehicles: (id: number) => fetchApi<any[]>(`/customers/${id}/vehicles`),
-};
+    }),
+});
 
-// Vehicle API
-export const vehicleApi = {
-  getAll: () => fetchApi<any[]>('/vehicles'),
-  getById: (id: number) => fetchApi<any>(`/vehicles/${id}`),
-  create: (data: any) => fetchApi<any>('/vehicles', {
-    method: 'POST',
-    body: JSON.stringify(data),
-  }),
-  update: (id: number, data: any) => fetchApi<any>(`/vehicles/${id}`, {
-    method: 'PUT',
-    body: JSON.stringify(data),
-  }),
-  delete: (id: number) => fetchApi<any>(`/vehicles/${id}`, {
-    method: 'DELETE',
-  }),
-};
-
-// Work Order API
+// Export specific APIs
 export const workOrderApi = {
-  getAll: () => fetchApi<any[]>('/workorders'),
-  getById: (id: number) => fetchApi<any>(`/workorders/${id}`),
-  create: (data: any) => fetchApi<any>('/workorders', {
-    method: 'POST',
-    body: JSON.stringify(data),
-  }),
-  update: (id: number, data: any) => fetchApi<any>(`/workorders/${id}`, {
-    method: 'PUT',
-    body: JSON.stringify(data),
-  }),
-  delete: (id: number) => fetchApi<any>(`/workorders/${id}`, {
-    method: 'DELETE',
-  }),
+  ...createCrudApi('workorders'),
+  getByStatus: async (status: string) => 
+    apiRequest(`workorders/status/${status}`)
 };
 
-// Technician API
+export const customerApi = {
+  ...createCrudApi('customers'),
+  getVehicles: async (customerId: string | number) => 
+    apiRequest(`customers/${customerId}/vehicles`),
+  getWorkOrders: async (customerId: string | number) => 
+    apiRequest(`customers/${customerId}/workorders`)
+};
+
+export const vehicleApi = {
+  ...createCrudApi('vehicles'),
+  getByCustomerId: async (customerId: string | number) => 
+    apiRequest(`vehicles/customer/${customerId}`)
+};
+
 export const technicianApi = {
-  getAll: () => fetchApi<any[]>('/technicians'),
-  getById: (id: number) => fetchApi<any>(`/technicians/${id}`),
-  create: (data: any) => fetchApi<any>('/technicians', {
-    method: 'POST',
-    body: JSON.stringify(data),
-  }),
-  update: (id: number, data: any) => fetchApi<any>(`/technicians/${id}`, {
-    method: 'PUT',
-    body: JSON.stringify(data),
-  }),
-  delete: (id: number) => fetchApi<any>(`/technicians/${id}`, {
-    method: 'DELETE',
-  }),
+  ...createCrudApi('technicians'),
 };
 
 // Dashboard API
 export const dashboardApi = {
-  getMetrics: () => fetchApi<{
-    totalCustomers: number;
-    activeWorkOrders: number;
-    scheduledToday: number;
-    recentWorkOrders: any[];
-    workOrdersByStatus: any[];
-    workOrdersByServiceType: any[];
-    technicianWorkload: any[];
-  }>('/dashboard/metrics'),
-}; 
+  getSummary: async () => apiRequest('dashboard/metrics'),
+  getRecentWorkOrders: async (limit = 5) => apiRequest(`dashboard/recent-work-orders?limit=${limit}`),
+  getTechnicianStats: async () => apiRequest('dashboard/technician-stats'),
+  getMetrics: async () => {
+    const summary: Record<string, any> = await apiRequest('dashboard/metrics');
+    const recentWorkOrders = await apiRequest('dashboard/recent-work-orders');
+    const technicianStats = await apiRequest('dashboard/technician-stats');
+    
+    return {
+      ...summary,
+      recentWorkOrders,
+      technicianWorkload: technicianStats
+    };
+  }
+};
+
+export default {
+  workOrderApi,
+  customerApi,
+  vehicleApi,
+  technicianApi,
+  dashboardApi
+};

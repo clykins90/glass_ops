@@ -4,12 +4,12 @@ const mockSelect = jest.fn().mockReturnThis();
 const mockInsert = jest.fn().mockReturnThis();
 const mockUpdate = jest.fn().mockReturnThis();
 const mockDelete = jest.fn().mockReturnThis();
-const mockEq = jest.fn().mockReturnThis();
+const mockMatch = jest.fn().mockReturnThis();
 const mockOrder = jest.fn().mockReturnThis();
 const mockSingle = jest.fn().mockReturnThis();
 
 const mockDeleteChain = {
-  eq: jest.fn().mockReturnValue({ error: null })
+  match: jest.fn().mockReturnValue({ error: null })
 };
 
 // Mock Supabase client
@@ -20,7 +20,7 @@ jest.mock('../../utils/supabase', () => ({
     insert: mockInsert,
     update: mockUpdate,
     delete: jest.fn().mockReturnValue(mockDeleteChain),
-    eq: mockEq,
+    match: mockMatch,
     order: mockOrder,
     single: mockSingle
   }
@@ -52,6 +52,7 @@ describe('Vehicle Controller', () => {
       send: mockSend
     };
     mockReq = {};
+    (mockReq as any).user = { company_id: 1 };
     jest.clearAllMocks();
   });
 
@@ -64,15 +65,15 @@ describe('Vehicle Controller', () => {
 
       (mockFrom as jest.Mock).mockReturnThis();
       (mockSelect as jest.Mock).mockReturnThis();
+      (mockMatch as jest.Mock).mockReturnThis();
       (mockOrder as jest.Mock).mockResolvedValue({ data: mockVehicles, error: null });
 
       await getAllVehicles(mockReq as Request, mockRes as Response);
 
-      expect(mockFrom).toHaveBeenCalledWith('Vehicle');
-      expect(mockSelect).toHaveBeenCalledWith(`
-        *,
-        customer:customerId (*)
-      `);
+      expect(mockFrom).toHaveBeenCalledWith('vehicles');
+      expect(mockSelect).toHaveBeenCalledWith('*, customers(id, firstName, lastName)');
+      expect(mockMatch).toHaveBeenCalledWith({ company_id: 1 });
+      expect(mockOrder).toHaveBeenCalledWith('createdAt', { ascending: false });
       expect(mockJson).toHaveBeenCalledWith(mockVehicles);
     });
 
@@ -80,10 +81,12 @@ describe('Vehicle Controller', () => {
       const mockError = new Error('Database error');
       (mockFrom as jest.Mock).mockReturnThis();
       (mockSelect as jest.Mock).mockReturnThis();
+      (mockMatch as jest.Mock).mockReturnThis();
       (mockOrder as jest.Mock).mockResolvedValue({ data: null, error: mockError });
 
       await getAllVehicles(mockReq as Request, mockRes as Response);
 
+      expect(mockMatch).toHaveBeenCalledWith({ company_id: 1 });
       expect(mockStatus).toHaveBeenCalledWith(500);
       expect(mockJson).toHaveBeenCalledWith({
         error: 'Failed to fetch vehicles',
@@ -105,18 +108,14 @@ describe('Vehicle Controller', () => {
 
       (mockFrom as jest.Mock).mockReturnThis();
       (mockSelect as jest.Mock).mockReturnThis();
-      (mockEq as jest.Mock).mockReturnThis();
+      (mockMatch as jest.Mock).mockReturnThis();
       (mockSingle as jest.Mock).mockResolvedValue({ data: mockVehicle, error: null });
 
       await getVehicleById(mockReq as Request, mockRes as Response);
 
-      expect(mockFrom).toHaveBeenCalledWith('Vehicle');
-      expect(mockSelect).toHaveBeenCalledWith(`
-        *,
-        customer:customerId (*),
-        workOrders (*)
-      `);
-      expect(mockEq).toHaveBeenCalledWith('id', '1');
+      expect(mockFrom).toHaveBeenCalledWith('vehicles');
+      expect(mockSelect).toHaveBeenCalledWith('*, customers(id, firstName, lastName)');
+      expect(mockMatch).toHaveBeenCalledWith({ id: '1', company_id: 1 });
       expect(mockJson).toHaveBeenCalledWith(mockVehicle);
     });
 
@@ -125,7 +124,7 @@ describe('Vehicle Controller', () => {
 
       (mockFrom as jest.Mock).mockReturnThis();
       (mockSelect as jest.Mock).mockReturnThis();
-      (mockEq as jest.Mock).mockReturnThis();
+      (mockMatch as jest.Mock).mockReturnThis();
       (mockSingle as jest.Mock).mockResolvedValue({ 
         data: null, 
         error: { code: 'PGRST116' } 
@@ -133,6 +132,7 @@ describe('Vehicle Controller', () => {
 
       await getVehicleById(mockReq as Request, mockRes as Response);
 
+      expect(mockMatch).toHaveBeenCalledWith({ id: '999', company_id: 1 });
       expect(mockStatus).toHaveBeenCalledWith(404);
       expect(mockJson).toHaveBeenCalledWith({ error: 'Vehicle not found' });
     });
@@ -154,16 +154,18 @@ describe('Vehicle Controller', () => {
 
       (mockFrom as jest.Mock).mockReturnThis();
       (mockSelect as jest.Mock).mockReturnThis();
-      (mockEq as jest.Mock).mockReturnThis();
-      (mockSingle as jest.Mock)
-        .mockResolvedValueOnce({ data: { id: 1 }, error: null }) // Customer check
-        .mockResolvedValueOnce({ data: mockNewVehicle, error: null }); // Vehicle creation
+      (mockMatch as jest.Mock).mockReturnThis();
       (mockInsert as jest.Mock).mockReturnThis();
+      (mockSingle as jest.Mock)
+        .mockResolvedValueOnce({ data: { id: 1 }, error: null })
+        .mockResolvedValueOnce({ data: mockNewVehicle, error: null });
 
       await createVehicle(mockReq as Request, mockRes as Response);
 
-      expect(mockFrom).toHaveBeenCalledWith('Vehicle');
-      expect(mockInsert).toHaveBeenCalledWith([mockVehicleData]);
+      expect(mockFrom).toHaveBeenCalledWith('customers');
+      expect(mockMatch).toHaveBeenCalledWith({ id: mockVehicleData.customerId, company_id: 1 });
+      expect(mockFrom).toHaveBeenCalledWith('vehicles');
+      expect(mockInsert).toHaveBeenCalledWith([{ ...mockVehicleData, company_id: 1 }]);
       expect(mockStatus).toHaveBeenCalledWith(201);
       expect(mockJson).toHaveBeenCalledWith(mockNewVehicle);
     });
@@ -177,7 +179,7 @@ describe('Vehicle Controller', () => {
 
       (mockFrom as jest.Mock).mockReturnThis();
       (mockSelect as jest.Mock).mockReturnThis();
-      (mockEq as jest.Mock).mockReturnThis();
+      (mockMatch as jest.Mock).mockReturnThis();
       (mockSingle as jest.Mock).mockResolvedValue({ 
         data: null, 
         error: { code: 'PGRST116' } 
@@ -185,8 +187,9 @@ describe('Vehicle Controller', () => {
 
       await createVehicle(mockReq as Request, mockRes as Response);
 
+      expect(mockMatch).toHaveBeenCalledWith({ id: 999, company_id: 1 });
       expect(mockStatus).toHaveBeenCalledWith(404);
-      expect(mockJson).toHaveBeenCalledWith({ error: 'Customer not found' });
+      expect(mockJson).toHaveBeenCalledWith({ error: 'Customer not found or access denied' });
     });
   });
 
@@ -207,18 +210,18 @@ describe('Vehicle Controller', () => {
 
       (mockFrom as jest.Mock).mockReturnThis();
       (mockSelect as jest.Mock).mockReturnThis();
-      (mockEq as jest.Mock).mockReturnThis();
-      (mockSingle as jest.Mock)
-        .mockResolvedValueOnce({ data: { id: 1 }, error: null }) // Vehicle check
-        .mockResolvedValueOnce({ data: { id: 1 }, error: null }) // Customer check
-        .mockResolvedValueOnce({ data: mockUpdatedVehicle, error: null }); // Update result
+      (mockMatch as jest.Mock).mockReturnThis();
       (mockUpdate as jest.Mock).mockReturnThis();
+      (mockSingle as jest.Mock)
+        .mockResolvedValueOnce({ data: { id: 1 }, error: null })
+        .mockResolvedValueOnce({ data: { id: 1 }, error: null })
+        .mockResolvedValueOnce({ data: mockUpdatedVehicle, error: null });
 
       await updateVehicle(mockReq as Request, mockRes as Response);
 
-      expect(mockFrom).toHaveBeenCalledWith('Vehicle');
+      expect(mockFrom).toHaveBeenCalledWith('vehicles');
       expect(mockUpdate).toHaveBeenCalledWith(mockVehicleData);
-      expect(mockEq).toHaveBeenCalledWith('id', '1');
+      expect(mockMatch).toHaveBeenCalledWith({ id: '1', company_id: 1 });
       expect(mockJson).toHaveBeenCalledWith(mockUpdatedVehicle);
     });
 
@@ -228,7 +231,7 @@ describe('Vehicle Controller', () => {
 
       (mockFrom as jest.Mock).mockReturnThis();
       (mockSelect as jest.Mock).mockReturnThis();
-      (mockEq as jest.Mock).mockReturnThis();
+      (mockMatch as jest.Mock).mockReturnThis();
       (mockSingle as jest.Mock).mockResolvedValue({ 
         data: null, 
         error: { code: 'PGRST116' } 
@@ -236,8 +239,9 @@ describe('Vehicle Controller', () => {
 
       await updateVehicle(mockReq as Request, mockRes as Response);
 
+      expect(mockMatch).toHaveBeenCalledWith({ id: '999', company_id: 1 });
       expect(mockStatus).toHaveBeenCalledWith(404);
-      expect(mockJson).toHaveBeenCalledWith({ error: 'Vehicle not found' });
+      expect(mockJson).toHaveBeenCalledWith({ error: 'Vehicle not found or access denied' });
     });
 
     it('should return 404 when new customer not found', async () => {
@@ -246,15 +250,17 @@ describe('Vehicle Controller', () => {
 
       (mockFrom as jest.Mock).mockReturnThis();
       (mockSelect as jest.Mock).mockReturnThis();
-      (mockEq as jest.Mock).mockReturnThis();
+      (mockMatch as jest.Mock).mockReturnThis();
       (mockSingle as jest.Mock)
-        .mockResolvedValueOnce({ data: { id: 1 }, error: null }) // Vehicle exists
-        .mockResolvedValueOnce({ data: null, error: { code: 'PGRST116' } }); // Customer not found
+        .mockResolvedValueOnce({ data: { id: 1 }, error: null })
+        .mockResolvedValueOnce({ data: null, error: { code: 'PGRST116' } });
 
       await updateVehicle(mockReq as Request, mockRes as Response);
 
+      expect(mockMatch).toHaveBeenCalledWith({ id: '1', company_id: 1 });
+      expect(mockMatch).toHaveBeenCalledWith({ id: 999, company_id: 1 });
       expect(mockStatus).toHaveBeenCalledWith(404);
-      expect(mockJson).toHaveBeenCalledWith({ error: 'Customer not found' });
+      expect(mockJson).toHaveBeenCalledWith({ error: 'Customer not found or access denied' });
     });
   });
 
@@ -264,13 +270,14 @@ describe('Vehicle Controller', () => {
 
       (mockFrom as jest.Mock).mockReturnThis();
       (mockSelect as jest.Mock).mockReturnThis();
-      (mockEq as jest.Mock).mockReturnThis();
+      (mockMatch as jest.Mock).mockReturnThis();
       (mockSingle as jest.Mock).mockResolvedValue({ data: { id: 1 }, error: null });
 
       await deleteVehicle(mockReq as Request, mockRes as Response);
 
-      expect(mockFrom).toHaveBeenCalledWith('Vehicle');
-      expect(mockDeleteChain.eq).toHaveBeenCalledWith('id', '1');
+      expect(mockFrom).toHaveBeenCalledWith('vehicles');
+      expect(mockMatch).toHaveBeenCalledWith({ id: '1', company_id: 1 });
+      expect(mockDeleteChain.match).toHaveBeenCalledWith({ id: '1', company_id: 1 });
       expect(mockStatus).toHaveBeenCalledWith(204);
       expect(mockSend).toHaveBeenCalled();
     });
@@ -280,7 +287,7 @@ describe('Vehicle Controller', () => {
 
       (mockFrom as jest.Mock).mockReturnThis();
       (mockSelect as jest.Mock).mockReturnThis();
-      (mockEq as jest.Mock).mockReturnThis();
+      (mockMatch as jest.Mock).mockReturnThis();
       (mockSingle as jest.Mock).mockResolvedValue({ 
         data: null, 
         error: { code: 'PGRST116' } 
@@ -288,8 +295,9 @@ describe('Vehicle Controller', () => {
 
       await deleteVehicle(mockReq as Request, mockRes as Response);
 
+      expect(mockMatch).toHaveBeenCalledWith({ id: '999', company_id: 1 });
       expect(mockStatus).toHaveBeenCalledWith(404);
-      expect(mockJson).toHaveBeenCalledWith({ error: 'Vehicle not found' });
+      expect(mockJson).toHaveBeenCalledWith({ error: 'Vehicle not found or access denied' });
     });
   });
 }); 

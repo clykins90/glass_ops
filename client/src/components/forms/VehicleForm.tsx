@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Vehicle } from '../../types/vehicle';
+import { Vehicle } from '../../types';
 import { vehicleApi } from '../../services/api';
 import { useNavigate } from 'react-router-dom';
 
@@ -90,12 +90,12 @@ const VehicleForm: React.FC<VehicleFormProps> = ({
     setIsSubmitting(true);
     
     try {
-      let vehicle;
+      let vehicle: Vehicle;
       
       if (isEditing && initialData?.id) {
-        vehicle = await vehicleApi.update(initialData.id, formData);
+        vehicle = await vehicleApi.update(initialData.id, formData) as Vehicle;
       } else {
-        vehicle = await vehicleApi.create(formData);
+        vehicle = await vehicleApi.create(formData) as Vehicle;
       }
       
       if (onSuccess) {

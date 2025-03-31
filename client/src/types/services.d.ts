@@ -13,18 +13,18 @@ declare module '../services/workOrderService' {
   export function getWorkOrdersByTechnician(technicianId: number): Promise<WorkOrder[]>;
 }
 
-declare module '../services/technicianService' {
-  import { Technician } from '../types/technician';
+declare module '../services/profileService' {
+  import { Profile } from '../types/profile';
   import { WorkOrder } from '../types/workOrder';
   
-  export function getTechnicians(): Promise<Technician[]>;
-  export function getTechnicianById(id: number): Promise<Technician>;
-  export function createTechnician(technician: Omit<Technician, 'id' | 'createdAt' | 'updatedAt'>): Promise<Technician>;
-  export function updateTechnician(id: number, technician: Partial<Technician>): Promise<Technician>;
-  export function deleteTechnician(id: number): Promise<void>;
-  export function getActiveTechnicians(): Promise<Technician[]>;
-  export function getTechnicianSchedule(technicianId: number, date?: Date): Promise<WorkOrder[]>;
-  export function getTechnicianWorkload(technicianId: number): Promise<{ 
+  export function getTechnicianProfiles(): Promise<Profile[]>;
+  export function getTechnicianProfileById(id: string): Promise<Profile>;
+  export function createTechnicianProfile(profileData: Omit<Profile, 'id' | 'createdAt' | 'updatedAt' | 'company_id' | 'role'>): Promise<Profile>;
+  export function updateTechnicianProfile(id: string, profileData: Partial<Profile>): Promise<Profile>;
+  export function deleteTechnicianProfile(id: string): Promise<void>;
+  export function getActiveTechnicianProfiles(): Promise<Profile[]>;
+  export function getTechnicianSchedule(technicianProfileId: string, date?: Date): Promise<WorkOrder[]>;
+  export function getTechnicianWorkload(technicianProfileId: string): Promise<{ 
     scheduled: number; 
     inProgress: number; 
     completed: number; 

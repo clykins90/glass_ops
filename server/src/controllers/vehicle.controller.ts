@@ -8,11 +8,12 @@ import { supabase } from '../utils/supabase';
 export const getAllVehicles = async (req: Request, res: Response) => {
   try {
     const { data: vehicles, error } = await supabase
-      .from('Vehicle')
+      .from('vehicles')
       .select(`
         *,
-        customer:customerId (*)
+        customer:customerId(id, firstName, lastName)
       `)
+      .match({ company_id: (req as any).user.company_id })
       .order('createdAt', { ascending: false });
 
     if (error) throw error;
@@ -35,13 +36,12 @@ export const getVehicleById = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const { data: vehicle, error } = await supabase
-      .from('Vehicle')
+      .from('vehicles')
       .select(`
         *,
-        customer:customerId (*),
-        workOrders (*)
+        customer:customerId(id, firstName, lastName)
       `)
-      .eq('id', id)
+      .match({ id: id, company_id: (req as any).user.company_id })
       .single();
 
     if (error) {
@@ -70,26 +70,23 @@ export const getVehicleById = async (req: Request, res: Response) => {
 export const createVehicle = async (req: Request, res: Response) => {
   try {
     const vehicleData = req.body;
+    const companyId = (req as any).user.company_id;
     
-    // Check if customer exists
+    // Check if customer exists and belongs to the company
     const { data: customer, error: customerError } = await supabase
-      .from('Customer')
-      .select()
-      .eq('id', vehicleData.customerId)
+      .from('customers')
+      .select('id')
+      .match({ id: vehicleData.customerId, company_id: companyId })
       .single();
 
-    if (customerError) {
-      if (customerError.code === 'PGRST116') {
-        return res.status(404).json({
-          error: 'Customer not found'
-        });
-      }
-      throw customerError;
+    if (customerError || !customer) {
+      console.error('Error checking customer for vehicle creation:', customerError);
+      return res.status(404).json({ error: 'Customer not found or access denied' });
     }
 
     const { data: newVehicle, error } = await supabase
-      .from('Vehicle')
-      .insert([vehicleData])
+      .from('vehicles')
+      .insert([{ ...vehicleData, company_id: companyId }])
       .select(`
         *,
         customer:customerId (*)
@@ -116,45 +113,38 @@ export const updateVehicle = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const vehicleData = req.body;
+    const companyId = (req as any).user.company_id;
 
-    // Check if vehicle exists
+    // First, check if the vehicle exists and belongs to the company
     const { data: existingVehicle, error: checkError } = await supabase
-      .from('Vehicle')
-      .select()
-      .eq('id', id)
+      .from('vehicles')
+      .select('id, company_id')
+      .match({ id: id, company_id: companyId })
       .single();
 
-    if (checkError) {
-      if (checkError.code === 'PGRST116') {
-        return res.status(404).json({
-          error: 'Vehicle not found'
-        });
-      }
-      throw checkError;
+    if (checkError || !existingVehicle) {
+      console.error('Error checking vehicle existence for update:', checkError);
+      return res.status(404).json({ error: 'Vehicle not found or access denied' });
     }
 
-    // If customerId is being updated, check if new customer exists
+    // Check if customer exists and belongs to the company (if customerId is provided)
     if (vehicleData.customerId) {
       const { data: customer, error: customerError } = await supabase
-        .from('Customer')
-        .select()
-        .eq('id', vehicleData.customerId)
+        .from('customers')
+        .select('id')
+        .match({ id: vehicleData.customerId, company_id: companyId })
         .single();
 
-      if (customerError) {
-        if (customerError.code === 'PGRST116') {
-          return res.status(404).json({
-            error: 'Customer not found'
-          });
-        }
-        throw customerError;
+      if (customerError || !customer) {
+        console.error('Error checking customer for vehicle update:', customerError);
+        return res.status(404).json({ error: 'Customer not found or access denied' });
       }
     }
 
     const { data: updatedVehicle, error } = await supabase
-      .from('Vehicle')
+      .from('vehicles')
       .update(vehicleData)
-      .eq('id', id)
+      .match({ id: id, company_id: companyId })
       .select(`
         *,
         customer:customerId (*)
@@ -180,27 +170,25 @@ export const updateVehicle = async (req: Request, res: Response) => {
 export const deleteVehicle = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+    const companyId = (req as any).user.company_id;
 
-    // Check if vehicle exists
+    // First, check if the vehicle exists and belongs to the company
     const { data: existingVehicle, error: checkError } = await supabase
-      .from('Vehicle')
-      .select()
-      .eq('id', id)
+      .from('vehicles')
+      .select('id, company_id')
+      .match({ id: id, company_id: companyId })
       .single();
 
-    if (checkError) {
-      if (checkError.code === 'PGRST116') {
-        return res.status(404).json({
-          error: 'Vehicle not found'
-        });
-      }
-      throw checkError;
+    if (checkError || !existingVehicle) {
+      console.error('Error checking vehicle existence for delete:', checkError);
+      return res.status(404).json({ error: 'Vehicle not found or access denied' });
     }
 
+    // Delete vehicle
     const { error } = await supabase
-      .from('Vehicle')
-      .delete()
-      .eq('id', id);
+        .from('vehicles')
+        .delete()
+        .match({ id: id, company_id: companyId });
 
     if (error) throw error;
 

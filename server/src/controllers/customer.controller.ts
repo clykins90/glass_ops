@@ -7,9 +7,20 @@ import { supabase } from '../utils/supabase';
  */
 export const getAllCustomers = async (req: Request, res: Response) => {
   try {
+    // Validate that req.user and company_id exist
+    const companyId = (req as any).user?.company_id;
+    if (!companyId) {
+      return res.status(401).json({
+        error: 'Authentication required',
+        details: 'Missing company ID - you may need to log in again'
+      });
+    }
+
     const { data: customers, error } = await supabase
-      .from('Customer')
+      .from('customers')
       .select('*')
+      .match({ company_id: companyId })
+      .order('firstName', { ascending: true })
       .order('lastName', { ascending: true });
 
     if (error) throw error;
@@ -31,10 +42,11 @@ export const getAllCustomers = async (req: Request, res: Response) => {
 export const getCustomerById = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+
     const { data: customer, error } = await supabase
-      .from('Customer')
+      .from('customers')
       .select('*')
-      .eq('id', id)
+      .match({ id: id, company_id: (req as any).user.company_id })
       .single();
 
     if (error) {
@@ -64,8 +76,8 @@ export const createCustomer = async (req: Request, res: Response) => {
   try {
     const customerData = req.body;
     const { data: newCustomer, error } = await supabase
-      .from('Customer')
-      .insert([customerData])
+      .from('customers')
+      .insert([{ ...customerData, company_id: (req as any).user.company_id }])
       .select()
       .single();
 
@@ -90,26 +102,21 @@ export const updateCustomer = async (req: Request, res: Response) => {
     const { id } = req.params;
     const customerData = req.body;
 
-    // Check if customer exists
+    // First, check if the customer exists and belongs to the company
     const { data: existingCustomer, error: checkError } = await supabase
-      .from('Customer')
-      .select()
-      .eq('id', id)
-      .single();
+      .from('customers')
+      .select('id')
+      .match({ id: id, company_id: (req as any).user.company_id });
 
-    if (checkError) {
-      if (checkError.code === 'PGRST116') {
-        return res.status(404).json({
-          error: 'Customer not found'
-        });
-      }
-      throw checkError;
+    if (checkError || !existingCustomer || existingCustomer.length === 0) {
+      console.error('Error checking customer existence for update:', checkError);
+      return res.status(404).json({ error: 'Customer not found or access denied' });
     }
 
     const { data: updatedCustomer, error } = await supabase
-      .from('Customer')
+      .from('customers')
       .update(customerData)
-      .eq('id', id)
+      .match({ id: id, company_id: (req as any).user.company_id })
       .select()
       .single();
 
@@ -132,30 +139,25 @@ export const updateCustomer = async (req: Request, res: Response) => {
 export const deleteCustomer = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    console.log(`Attempting to delete customer with ID: ${id}`);
+    const companyId = (req as any).user.company_id;
+    console.log(`Attempting to delete customer with ID: ${id} for company ${companyId}`);
 
-    // Check if customer exists
+    // First, check if the customer exists and belongs to the company
     const { data: existingCustomer, error: checkError } = await supabase
-      .from('Customer')
-      .select()
-      .eq('id', id)
-      .single();
+      .from('customers')
+      .select('id')
+      .match({ id: id, company_id: companyId });
 
-    if (checkError) {
-      console.error(`Customer check error for ID ${id}:`, checkError);
-      if (checkError.code === 'PGRST116') {
-        return res.status(404).json({
-          error: 'Customer not found'
-        });
-      }
-      throw checkError;
+    if (checkError || !existingCustomer || existingCustomer.length === 0) {
+      console.error('Error checking customer existence for delete:', checkError);
+      return res.status(404).json({ error: 'Customer not found or access denied' });
     }
 
     // Check for related vehicles
     const { data: vehicles, error: vehiclesError } = await supabase
-      .from('Vehicle')
+      .from('vehicles')
       .select('id')
-      .eq('customerId', id);
+      .match({ customerId: id, company_id: companyId });
       
     if (vehiclesError) throw vehiclesError;
     
@@ -168,9 +170,9 @@ export const deleteCustomer = async (req: Request, res: Response) => {
     
     // Check for related work orders
     const { data: workOrders, error: workOrdersError } = await supabase
-      .from('WorkOrder')
+      .from('work_orders')
       .select('id')
-      .eq('customerId', id);
+      .match({ customerId: id, company_id: companyId });
       
     if (workOrdersError) throw workOrdersError;
     
@@ -183,9 +185,9 @@ export const deleteCustomer = async (req: Request, res: Response) => {
 
     // Perform the delete operation
     const { error } = await supabase
-      .from('Customer')
+      .from('customers')
       .delete()
-      .eq('id', id);
+      .match({ id: id, company_id: companyId });
 
     if (error) {
       console.error(`Error during delete operation for customer ${id}:`, error);
@@ -210,31 +212,27 @@ export const deleteCustomer = async (req: Request, res: Response) => {
 export const getCustomerWorkOrders = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+    const companyId = (req as any).user.company_id;
 
-    // Check if customer exists
+    // First, check if the customer exists and belongs to the company
     const { data: existingCustomer, error: checkError } = await supabase
-      .from('Customer')
-      .select()
-      .eq('id', id)
-      .single();
+      .from('customers')
+      .select('id')
+      .match({ id: id, company_id: companyId });
 
-    if (checkError) {
-      if (checkError.code === 'PGRST116') {
-        return res.status(404).json({
-          error: 'Customer not found'
-        });
-      }
-      throw checkError;
+    if (checkError || !existingCustomer || existingCustomer.length === 0) {
+      console.error('Error checking customer existence for work orders:', checkError);
+      return res.status(404).json({ error: 'Customer not found or access denied' });
     }
 
     const { data: workOrders, error } = await supabase
-      .from('WorkOrder')
+      .from('work_orders')
       .select(`
         *,
         vehicle:vehicleId (*),
         technician:technicianId (*)
       `)
-      .eq('customerId', id)
+      .match({ customerId: id, company_id: companyId })
       .order('createdAt', { ascending: false });
 
     if (error) throw error;
@@ -256,27 +254,23 @@ export const getCustomerWorkOrders = async (req: Request, res: Response) => {
 export const getCustomerVehicles = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+    const companyId = (req as any).user.company_id;
 
-    // Check if customer exists
+    // First, check if the customer exists and belongs to the company
     const { data: existingCustomer, error: checkError } = await supabase
-      .from('Customer')
-      .select()
-      .eq('id', id)
-      .single();
+      .from('customers')
+      .select('id')
+      .match({ id: id, company_id: companyId });
 
-    if (checkError) {
-      if (checkError.code === 'PGRST116') {
-        return res.status(404).json({
-          error: 'Customer not found'
-        });
-      }
-      throw checkError;
+    if (checkError || !existingCustomer || existingCustomer.length === 0) {
+      console.error('Error checking customer existence for vehicles:', checkError);
+      return res.status(404).json({ error: 'Customer not found or access denied' });
     }
 
     const { data: vehicles, error } = await supabase
-      .from('Vehicle')
+      .from('vehicles')
       .select('*')
-      .eq('customerId', id)
+      .match({ customerId: id, company_id: companyId })
       .order('createdAt', { ascending: false });
 
     if (error) throw error;

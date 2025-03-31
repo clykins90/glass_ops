@@ -2,6 +2,8 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { customerApi } from '../services/api';
 import { Customer } from '../types/customer';
+import { useAuth } from './AuthContext';
+import { isAuthError } from '../services/api';
 
 // Define the context type
 interface CustomerContextType {
@@ -26,11 +28,25 @@ interface CustomerProviderProps {
 export const CustomerProvider: React.FC<CustomerProviderProps> = ({ children }) => {
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const queryClient = useQueryClient();
-
-  // Fetch customers
+  const { session } = useAuth();
+  
+  // Fetch customers - only run query if authenticated
   const { data: customers = [], isLoading, error } = useQuery({
     queryKey: ['customers'],
     queryFn: () => customerApi.getAll(),
+    // Don't run the query if we're not authenticated
+    enabled: !!session,
+    // Don't throw errors for failed requests due to auth
+    retry: (count, error) => {
+      if (isAuthError(error)) return false;
+      return count < 3; // Default retry logic for other errors
+    },
+    // Silence the error in the console when it's an authentication error
+    onError: (error) => {
+      if (!isAuthError(error)) {
+        console.error('Error fetching customers:', error);
+      }
+    }
   });
 
   // Create customer mutation
@@ -62,16 +78,19 @@ export const CustomerProvider: React.FC<CustomerProviderProps> = ({ children }) 
 
   // Create customer function
   const createCustomer = async (customer: Omit<Customer, 'id' | 'createdAt' | 'updatedAt'>) => {
+    if (!session) throw new Error('No active session');
     return createMutation.mutateAsync(customer);
   };
 
   // Update customer function
   const updateCustomer = async (id: number, customer: Partial<Customer>) => {
+    if (!session) throw new Error('No active session');
     return updateMutation.mutateAsync({ id, customer });
   };
 
   // Delete customer function
   const deleteCustomer = async (id: number) => {
+    if (!session) throw new Error('No active session');
     await deleteMutation.mutateAsync(id);
   };
 

@@ -3,57 +3,62 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { technicianApi } from '../services/api';
 import TechnicianForm from '../components/forms/TechnicianForm';
-import { Technician } from '../types/technician';
+import { Profile } from '../types/profile';
+import { useTechnicianProfiles } from '../context/TechnicianContext';
 
 const EditTechnician = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { updateProfile } = useTechnicianProfiles();
 
-  // Fetch technician details
+  // Fetch technician profile details
   const { 
-    data: technician, 
+    data: profile,
     isLoading, 
     error 
-  } = useQuery<Technician>({
+  } = useQuery<Profile>({
     queryKey: ['technician', id],
-    queryFn: () => technicianApi.getById(Number(id)),
+    queryFn: () => technicianApi.getById(id!),
     enabled: !!id,
   });
 
-  // Update technician mutation
+  // Update profile mutation using context function
   const updateMutation = useMutation({
-    mutationFn: (data: Omit<Technician, 'id' | 'createdAt' | 'updatedAt'>) => 
-      technicianApi.update(Number(id), data),
+    mutationFn: (data: Omit<Profile, 'id' | 'createdAt' | 'updatedAt' | 'company_id' | 'role'>) => {
+      if (!id) throw new Error('Profile ID is missing');
+      return updateProfile(id, data);
+    },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['technicians'] });
-      queryClient.invalidateQueries({ queryKey: ['technician', id] });
       navigate(`/technicians/${id}`);
     },
+    onError: (error) => {
+      console.error("Error updating profile:", error);
+    }
   });
 
-  const handleSubmit = (data: Omit<Technician, 'id' | 'createdAt' | 'updatedAt'>) => {
+  const handleSubmit = (data: Omit<Profile, 'id' | 'createdAt' | 'updatedAt' | 'company_id' | 'role'>) => {
     updateMutation.mutate(data);
   };
 
   if (isLoading) {
-    return <div className="p-8 text-center">Loading technician details...</div>;
+    return <div className="p-8 text-center">Loading technician profile details...</div>;
   }
 
   if (error) {
-    return <div className="p-8 text-center text-red-500">Error loading technician: {(error as Error).message}</div>;
+    return <div className="p-8 text-center text-red-500">Error loading profile: {(error as Error).message}</div>;
   }
 
-  if (!technician) {
-    return <div className="p-8 text-center text-red-500">Technician not found</div>;
+  if (!profile) {
+    return <div className="p-8 text-center text-red-500">Technician profile not found</div>;
   }
 
   return (
-    <div>
+    <div className="p-4 md:p-8">
       <div className="md:flex md:items-center md:justify-between mb-6">
         <div className="min-w-0 flex-1">
           <h2 className="text-2xl font-bold leading-7 text-gray-900 sm:truncate sm:text-3xl sm:tracking-tight">
-            Edit Technician: {technician.firstName} {technician.lastName}
+            Edit Technician Profile: {profile.firstName} {profile.lastName}
           </h2>
         </div>
       </div>
@@ -61,13 +66,13 @@ const EditTechnician = () => {
       {updateMutation.isError && (
         <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-md">
           <p className="text-sm text-red-600">
-            Error updating technician: {(updateMutation.error as Error).message}
+            Error updating profile: {(updateMutation.error as Error).message}
           </p>
         </div>
       )}
 
       <TechnicianForm 
-        initialData={technician}
+        initialData={profile} 
         onSubmit={handleSubmit} 
         isLoading={updateMutation.isLoading} 
       />

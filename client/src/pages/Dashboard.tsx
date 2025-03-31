@@ -1,9 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { dashboardApi } from '../services/api';
+import { dashboardApi, isAuthError } from '../services/api';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '../components/ui/card';
 import { Skeleton } from '../components/ui/skeleton.tsx';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { useAuth } from '../context/AuthContext';
 
 // Define types for our dashboard data
 interface DashboardMetrics {
@@ -53,24 +54,36 @@ const Dashboard = () => {
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { session } = useAuth();
 
   useEffect(() => {
     const fetchDashboardData = async () => {
+      // Skip fetching if not authenticated
+      if (!session) {
+        setLoading(false);
+        return;
+      }
+      
       try {
         setLoading(true);
         const data = await dashboardApi.getMetrics();
-        setMetrics(data);
+        setMetrics(data as DashboardMetrics);
         setError(null);
       } catch (err) {
-        console.error('Error fetching dashboard metrics:', err);
-        setError('Failed to load dashboard data. Please try again later.');
+        // Don't show error message for auth errors
+        if (isAuthError(err)) {
+          console.log('Authentication required to view dashboard data');
+        } else {
+          console.error('Error fetching dashboard metrics:', err);
+          setError('Failed to load dashboard data. Please try again later.');
+        }
       } finally {
         setLoading(false);
       }
     };
 
     fetchDashboardData();
-  }, []);
+  }, [session]); // Re-fetch when session changes
 
   // Format date for display
   const formatDate = (dateString: string | null) => {
@@ -81,6 +94,19 @@ const Dashboard = () => {
       year: 'numeric',
     });
   };
+
+  // Show login message if not authenticated
+  if (!session) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 space-y-4">
+        <h1 className="text-2xl font-semibold text-gray-900">Dashboard</h1>
+        <p className="text-gray-600">Please log in to view dashboard data</p>
+        <Link to="/login" className="px-4 py-2 text-white bg-blue-600 rounded hover:bg-blue-700">
+          Log In
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -208,7 +234,7 @@ const Dashboard = () => {
                     dataKey="count"
                     nameKey="serviceType"
                   >
-                    {metrics.workOrdersByServiceType.map((entry, index) => (
+                    {metrics.workOrdersByServiceType.map((_entry, index) => (
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>

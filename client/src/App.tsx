@@ -1,4 +1,3 @@
-import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
@@ -26,12 +25,21 @@ import AddTechnician from './pages/AddTechnician';
 import EditTechnician from './pages/EditTechnician';
 import Schedule from './pages/Schedule';
 import NotFound from './pages/NotFound';
+import LoginPage from './pages/LoginPage';
+import SignUpPage from './pages/SignUpPage';
+import UserManagement from './pages/UserManagement';
+import ProfilePage from './pages/ProfilePage';
+import SelectCompanyPage from './pages/SelectCompanyPage';
 
 // Context
 import { AppProvider } from './context/AppContext';
 import { VehicleProvider } from './context/VehicleContext';
 import { WorkOrderProvider } from './context/WorkOrderContext';
 import { CustomerProvider } from './context/CustomerContext';
+import { AuthProvider } from './context/AuthContext';
+import { UserProvider } from './context/UserContext';
+import ProtectedRoute from './components/ProtectedRoute';
+import CompanyRequiredRoute from './components/CompanyRequiredRoute';
 
 // Create a client
 const queryClient = new QueryClient({
@@ -48,41 +56,63 @@ const queryClient = new QueryClient({
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <AppProvider>
-        <CustomerProvider>
-          <VehicleProvider>
-            <WorkOrderProvider>
-              <Router>
-                <Routes>
-                  <Route path="/" element={<DashboardLayout />}>
-                    <Route index element={<Dashboard />} />
-                    <Route path="customers" element={<Customers />} />
-                    <Route path="customers/add" element={<CustomerAdd />} />
-                    <Route path="customers/:id" element={<CustomerDetails />} />
-                    <Route path="customers/:id/edit" element={<CustomerEdit />} />
-                    <Route path="customers/:customerId/vehicles/new" element={<AddVehicle />} />
-                    <Route path="vehicles" element={<Vehicles />} />
-                    <Route path="vehicles/new" element={<AddVehicle />} />
-                    <Route path="vehicles/:id" element={<VehicleDetails />} />
-                    <Route path="vehicles/:id/edit" element={<EditVehicle />} />
-                    <Route path="work-orders" element={<WorkOrders />} />
-                    <Route path="work-orders/add" element={<AddWorkOrder />} />
-                    <Route path="work-orders/:id" element={<WorkOrderDetails />} />
-                    <Route path="work-orders/:id/edit" element={<EditWorkOrder />} />
-                    <Route path="schedule" element={<Schedule />} />
-                    <Route path="technicians" element={<Technicians />} />
-                    <Route path="technicians/add" element={<AddTechnician />} />
-                    <Route path="technicians/:id" element={<TechnicianDetails />} />
-                    <Route path="technicians/:id/edit" element={<EditTechnician />} />
-                    <Route path="*" element={<NotFound />} />
-                  </Route>
-                </Routes>
-              </Router>
-              <ReactQueryDevtools initialIsOpen={false} />
-            </WorkOrderProvider>
-          </VehicleProvider>
-        </CustomerProvider>
-      </AppProvider>
+      <AuthProvider>
+        <UserProvider>
+          <AppProvider>
+            <CustomerProvider>
+              <VehicleProvider>
+                <WorkOrderProvider>
+                  <Router>
+                    <Routes>
+                      <Route path="/login" element={<LoginPage />} />
+                      <Route path="/signup" element={<SignUpPage />} />
+                      <Route path="/select-company" element={
+                        <ProtectedRoute>
+                          <SelectCompanyPage />
+                        </ProtectedRoute>
+                      } />
+                      <Route
+                        path="/"
+                        element={
+                          <ProtectedRoute>
+                            <CompanyRequiredRoute>
+                              <DashboardLayout />
+                            </CompanyRequiredRoute>
+                          </ProtectedRoute>
+                        }
+                      >
+                        <Route index element={<Dashboard />} />
+                        <Route path="customers" element={<Customers />} />
+                        <Route path="customers/add" element={<CustomerAdd />} />
+                        <Route path="customers/:id" element={<CustomerDetails />} />
+                        <Route path="customers/:id/edit" element={<CustomerEdit />} />
+                        <Route path="customers/:customerId/vehicles/new" element={<AddVehicle />} />
+                        <Route path="vehicles" element={<Vehicles />} />
+                        <Route path="vehicles/new" element={<AddVehicle />} />
+                        <Route path="vehicles/:id" element={<VehicleDetails />} />
+                        <Route path="vehicles/:id/edit" element={<EditVehicle />} />
+                        <Route path="work-orders" element={<WorkOrders />} />
+                        <Route path="work-orders/add" element={<AddWorkOrder />} />
+                        <Route path="work-orders/:id" element={<WorkOrderDetails />} />
+                        <Route path="work-orders/:id/edit" element={<EditWorkOrder />} />
+                        <Route path="schedule" element={<Schedule />} />
+                        <Route path="technicians" element={<Technicians />} />
+                        <Route path="technicians/add" element={<AddTechnician />} />
+                        <Route path="technicians/:id" element={<TechnicianDetails />} />
+                        <Route path="technicians/:id/edit" element={<EditTechnician />} />
+                        <Route path="user-management" element={<UserManagement />} />
+                        <Route path="profile" element={<ProfilePage />} />
+                        <Route path="*" element={<NotFound />} />
+                      </Route>
+                    </Routes>
+                  </Router>
+                </WorkOrderProvider>
+              </VehicleProvider>
+            </CustomerProvider>
+          </AppProvider>
+        </UserProvider>
+      </AuthProvider>
+      <ReactQueryDevtools initialIsOpen={false} />
     </QueryClientProvider>
   );
 }

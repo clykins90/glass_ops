@@ -8,28 +8,29 @@ import {
   getCustomerWorkOrders,
   getCustomerVehicles
 } from '../controllers/customer.controller';
+import { requirePermission } from '../middleware/permission';
 
 const router = express.Router();
 
 // GET /api/customers - Get all customers
-router.get('/', getAllCustomers);
+router.get('/', requirePermission('customers', 'read'), getAllCustomers);
 
 // GET /api/customers/:id - Get a single customer
-router.get('/:id', getCustomerById);
+router.get('/:id', requirePermission('customers', 'read'), getCustomerById);
 
 // POST /api/customers - Create a new customer
-router.post('/', createCustomer);
+router.post('/', requirePermission('customers', 'create'), createCustomer);
 
 // PUT /api/customers/:id - Update a customer
-router.put('/:id', updateCustomer);
+router.put('/:id', requirePermission('customers', 'update'), updateCustomer);
 
 // DELETE /api/customers/:id - Delete a customer
-router.delete('/:id', deleteCustomer);
+router.delete('/:id', requirePermission('customers', 'delete'), deleteCustomer);
 
 // GET /api/customers/:id/workorders - Get all work orders for a customer
-router.get('/:id/workorders', getCustomerWorkOrders);
+router.get('/:id/workorders', requirePermission('work_orders', 'read'), getCustomerWorkOrders);
 
 // GET /api/customers/:id/vehicles - Get all vehicles for a customer
-router.get('/:id/vehicles', getCustomerVehicles);
+router.get('/:id/vehicles', requirePermission('vehicles', 'read'), getCustomerVehicles);
 
 export default router; 
