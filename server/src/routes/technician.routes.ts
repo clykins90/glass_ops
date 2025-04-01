@@ -8,8 +8,13 @@ import {
   getTechnicianWorkOrders,
   getTechnicianSchedule
 } from '../controllers/technician.controller';
+import { expandIdsMiddleware, shortenIdsMiddleware } from '../middleware/idMapping';
 
 const router = express.Router();
+
+// Apply ID mapping middleware to all routes
+router.use(expandIdsMiddleware);
+router.use(shortenIdsMiddleware());
 
 // GET /api/technicians - Get all technicians
 router.get('/', getAllTechnicians);
