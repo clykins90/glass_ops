@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useWorkOrders } from '../context/WorkOrderContext';
 import WorkOrderForm from '../components/forms/WorkOrderForm';
 import { WorkOrder } from '../types/workOrder';
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "../components/ui/use-toast";
 
 const AddWorkOrder = () => {
   const navigate = useNavigate();
@@ -35,8 +35,8 @@ const AddWorkOrder = () => {
     <div>
       <div className="sm:flex sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Create Work Order</h1>
-          <p className="mt-2 text-sm text-gray-700">
+          <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">Create Work Order</h1>
+          <p className="mt-2 text-sm text-gray-700 dark:text-gray-300">
             Add a new work order to the system.
           </p>
         </div>

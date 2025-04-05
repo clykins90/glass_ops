@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { customerApi, vehicleApi, technicianApi } from '../../services/api';
+import { customerApi, technicianApi } from '../../services/api';
 import { WorkOrder } from '../../types/workOrder';
 import { Customer } from '../../types/customer';
 import { Vehicle } from '../../types/vehicle';
@@ -44,6 +44,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
     insuranceInfo: initialData.insuranceInfo || '',
     warrantyInfo: initialData.warrantyInfo || '',
     notes: initialData.notes || '',
+    estimated_duration_minutes: initialData.estimated_duration_minutes || 60,
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -76,6 +77,8 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
     const { name, value } = e.target;
     if (name === 'price') {
         setFormData((prev) => ({ ...prev, [name]: value === '' ? undefined : parseFloat(value) }));
+    } else if (name === 'estimated_duration_minutes') {
+        setFormData((prev) => ({ ...prev, [name]: value === '' ? undefined : parseInt(value, 10) }));
     } else {
         setFormData((prev) => ({ ...prev, [name]: value }));
     }
@@ -84,10 +87,18 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
 
   const handleSelectChange = (name: keyof WorkOrder, value: string) => {
     let processedValue: string | number | undefined = value;
-     if (value === '') {
+    
+    // Handle the special "unassigned" value for technician
+    if (name === 'technicianId' && value === 'unassigned') {
+        processedValue = undefined;
+    } else if (value === '') {
+        // General handling for other empty string values if needed (though likely not)
          processedValue = undefined;
      } else if (name === 'customerId' || name === 'vehicleId' || name === 'technicianId') {
-      processedValue = value ? parseInt(value, 10) : undefined;
+      // Parse numeric IDs (skip if it was already set to undefined for "unassigned")
+      if (processedValue !== undefined) {
+          processedValue = value ? parseInt(value, 10) : undefined;
+      }
     } 
 
     setFormData((prev) => ({ ...prev, [name]: processedValue }));
@@ -125,6 +136,8 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
     if (!formData.serviceType) newErrors.serviceType = 'Service Type is required';
     if (!formData.glassLocation) newErrors.glassLocation = 'Glass Location is required';
     if (!formData.status) newErrors.status = 'Status is required';
+    if (!formData.estimated_duration_minutes) newErrors.estimated_duration_minutes = 'Estimated Duration is required';
+    else if (formData.estimated_duration_minutes < 1) newErrors.estimated_duration_minutes = 'Duration must be at least 1 minute';
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -138,14 +151,15 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
         ...formData,
         customerId: formData.customerId ? Number(formData.customerId) : undefined,
         vehicleId: formData.vehicleId ? Number(formData.vehicleId) : undefined,
-        technicianId: formData.technicianId ? Number(formData.technicianId) : undefined,
+        technicianId: formData.technicianId,
         price: formData.price ? Number(formData.price) : undefined,
+        estimated_duration_minutes: formData.estimated_duration_minutes ? Number(formData.estimated_duration_minutes) : 60,
     };
 
     if (isNaN(dataToSubmit.customerId as number)) dataToSubmit.customerId = undefined;
     if (isNaN(dataToSubmit.vehicleId as number)) dataToSubmit.vehicleId = undefined;
-    if (isNaN(dataToSubmit.technicianId as number)) dataToSubmit.technicianId = undefined;
     if (isNaN(dataToSubmit.price as number)) dataToSubmit.price = undefined;
+    if (isNaN(dataToSubmit.estimated_duration_minutes as number)) dataToSubmit.estimated_duration_minutes = 60;
 
     await onSubmit(dataToSubmit);
   };
@@ -176,7 +190,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
               <Label htmlFor="customerId">Customer *</Label>
               <Select 
                 name="customerId"
-                value={formData.customerId?.toString() ?? ''} 
+                value={formData.customerId?.toString() || undefined} 
                 onValueChange={(value) => handleSelectChange('customerId', value)}
                 disabled={customersLoading}
               >
@@ -184,10 +198,12 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
                   <SelectValue placeholder="Select a customer" />
                 </SelectTrigger>
                 <SelectContent>
-                  {customers.map((customer) => (
-                    <SelectItem key={customer.id} value={customer.id.toString()}>
-                      {customer.firstName} {customer.lastName}
-                    </SelectItem>
+                  {customers
+                    .filter(customer => customer.id != null && customer.id.toString() !== '')
+                    .map((customer) => (
+                      <SelectItem key={customer.id} value={customer.id.toString()}>
+                        {customer.firstName} {customer.lastName}
+                      </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -198,7 +214,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
               <Label htmlFor="vehicleId">Vehicle</Label>
               <Select 
                 name="vehicleId"
-                value={formData.vehicleId?.toString() ?? ''} 
+                value={formData.vehicleId?.toString() || undefined} 
                 onValueChange={(value) => handleSelectChange('vehicleId', value)}
                 disabled={!formData.customerId || vehiclesLoading || customerVehicles.length === 0}
               >
@@ -206,10 +222,12 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
                   <SelectValue placeholder={vehiclesLoading ? "Loading vehicles..." : "Select a vehicle"} />
                 </SelectTrigger>
                 <SelectContent>
-                  {customerVehicles.map((vehicle) => (
-                    <SelectItem key={vehicle.id} value={(vehicle.id as number).toString()}>
-                      {vehicle.year} {vehicle.make} {vehicle.model} {vehicle.color ? `(${vehicle.color})` : ''}
-                    </SelectItem>
+                  {customerVehicles
+                    .filter(vehicle => vehicle.id != null && vehicle.id.toString() !== '')
+                    .map((vehicle) => (
+                      <SelectItem key={vehicle.id} value={String(vehicle.id)}>
+                        {vehicle.year} {vehicle.make} {vehicle.model} {vehicle.color ? `(${vehicle.color})` : ''}
+                      </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -229,7 +247,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
               <Label htmlFor="serviceType">Service Type *</Label>
               <Select 
                 name="serviceType"
-                value={formData.serviceType ?? ''} 
+                value={formData.serviceType || undefined} 
                 onValueChange={(value) => handleSelectChange('serviceType', value)}
               >
                 <SelectTrigger className={errors.serviceType ? 'border-destructive' : ''}>
@@ -247,13 +265,14 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
               <Label htmlFor="glassLocation">Glass Location *</Label>
               <Select 
                 name="glassLocation"
-                value={formData.glassLocation ?? ''}
+                value={formData.glassLocation || undefined}
                 onValueChange={(value) => handleSelectChange('glassLocation', value)}
               >
                  <SelectTrigger className={errors.glassLocation ? 'border-destructive' : ''}>
                   <SelectValue placeholder="Select glass location" />
                 </SelectTrigger>
                 <SelectContent>
+                    {/* <SelectItem value="test-location">Test Location</SelectItem> */}
                     <SelectItem value="windshield">Windshield</SelectItem>
                     <SelectItem value="rear window">Rear Window</SelectItem>
                     <SelectItem value="driver front">Driver Front Window</SelectItem>
@@ -303,13 +322,14 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
               <Label htmlFor="status">Status *</Label>
               <Select 
                 name="status"
-                value={formData.status ?? 'scheduled'}
+                value={formData.status || undefined}
                 onValueChange={(value) => handleSelectChange('status', value)}
               >
                  <SelectTrigger className={errors.status ? 'border-destructive' : ''}>
                   <SelectValue placeholder="Select status" />
                 </SelectTrigger>
                 <SelectContent>
+                    {/* <SelectItem value="test-status">Test Status</SelectItem> */}
                     <SelectItem value="scheduled">Scheduled</SelectItem>
                     <SelectItem value="in-progress">In Progress</SelectItem>
                     <SelectItem value="completed">Completed</SelectItem>
@@ -345,11 +365,27 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
                {errors.completedDate && <p className="text-sm text-destructive">{errors.completedDate}</p>}
             </div>
 
+             <div className="space-y-1">
+              <Label htmlFor="estimated_duration_minutes">Estimated Duration (minutes) *</Label>
+              <Input
+                type="number"
+                id="estimated_duration_minutes"
+                name="estimated_duration_minutes"
+                value={formData.estimated_duration_minutes?.toString() || '60'}
+                onChange={handleChange}
+                min="1"
+                className={errors.estimated_duration_minutes ? 'border-destructive' : ''}
+              />
+              {errors.estimated_duration_minutes && (
+                <p className="text-sm text-destructive">{errors.estimated_duration_minutes}</p>
+              )}
+            </div>
+
              <div className="space-y-1 md:col-span-3">
               <Label htmlFor="technicianId">Assigned Technician</Label>
               <Select 
                 name="technicianId"
-                value={formData.technicianId?.toString() ?? ''} 
+                value={formData.technicianId?.toString() || undefined} 
                 onValueChange={(value) => handleSelectChange('technicianId', value)}
                 disabled={techniciansLoading}
               >
@@ -357,12 +393,18 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
                   <SelectValue placeholder={techniciansLoading ? "Loading technicians..." : "Assign a technician"} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Unassigned</SelectItem>
-                  {technicians.map((tech) => (
-                    <SelectItem key={tech.id} value={tech.id.toString()}>
-                      {tech.firstName} {tech.lastName}
-                    </SelectItem>
-                  ))}
+                    {/* Removed log */}
+                    <SelectItem value="unassigned">Unassigned</SelectItem>
+                   {technicians
+                    .filter(tech => tech.id != null && tech.id.toString() !== '')
+                    .map((tech) => {
+                        // Removed log
+                        return (
+                            <SelectItem key={tech.id} value={tech.id.toString()}>
+                                {tech.full_name} {/* Use full_name */} 
+                            </SelectItem>
+                        );
+                    })}
                 </SelectContent>
               </Select>
                {errors.technicianId && <p className="text-sm text-destructive">{errors.technicianId}</p>}
@@ -381,46 +423,47 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
                 type="number"
                 id="price"
                 name="price"
-                step="0.01"
-                value={formData.price ?? ''} 
+                value={formData.price?.toString() || ''}
                 onChange={handleChange}
-                placeholder="e.g., 120.50"
+                min="0"
+                step="0.01"
+                placeholder="Enter price"
                 className={errors.price ? 'border-destructive' : ''}
               />
-               {errors.price && <p className="text-sm text-destructive">{errors.price}</p>}
+              {errors.price && <p className="text-sm text-destructive">{errors.price}</p>}
             </div>
            <div className="space-y-1">
               <Label htmlFor="paymentType">Payment Type</Label>
               <Select 
                 name="paymentType"
-                value={formData.paymentType ?? ''} 
+                value={formData.paymentType || undefined}
                 onValueChange={(value) => handleSelectChange('paymentType', value)}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select payment type" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="cash">Cash</SelectItem>
-                  <SelectItem value="card">Card</SelectItem>
-                  <SelectItem value="insurance">Insurance</SelectItem>
-                  <SelectItem value="other">Other</SelectItem>
+                    <SelectItem value="cash">Cash</SelectItem>
+                    <SelectItem value="credit">Credit Card</SelectItem>
+                    <SelectItem value="check">Check</SelectItem>
+                    <SelectItem value="insurance">Insurance</SelectItem>
                 </SelectContent>
               </Select>
             </div>
              <div className="space-y-1">
               <Label htmlFor="paymentStatus">Payment Status</Label>
-               <Select 
+              <Select 
                 name="paymentStatus"
-                value={formData.paymentStatus ?? ''} 
+                value={formData.paymentStatus || undefined}
                 onValueChange={(value) => handleSelectChange('paymentStatus', value)}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select payment status" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="paid">Paid</SelectItem>
-                  <SelectItem value="unpaid">Unpaid</SelectItem>
-                  <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="paid">Paid</SelectItem>
+                    <SelectItem value="refunded">Refunded</SelectItem>
                 </SelectContent>
               </Select>
             </div>

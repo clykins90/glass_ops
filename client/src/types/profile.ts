@@ -6,8 +6,9 @@ export interface Profile {
   id: string; // Usually a UUID from auth.users
   company_id: number; // Foreign key to companies table
   role: string; // e.g., 'admin', 'technician', 'manager'
-  firstName: string;
-  lastName: string;
+  firstName: string; // Required field
+  lastName: string; // Required field
+  full_name?: string; // DEPRECATED: Use firstName and lastName instead
   email?: string; // May come from auth.users or profile
   phone?: string;
   // Add other fields from your profiles table as needed

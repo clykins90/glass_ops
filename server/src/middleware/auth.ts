@@ -21,7 +21,29 @@ export const authMiddleware = async (req: Request, res: Response, next: NextFunc
     return next();
   }
 
+  // Special handling for internal server-to-server requests from the agent
+  if (req.headers['x-internal-request'] === 'true') {
+    // For internal requests, we use custom headers to pass auth context
+    const companyId = req.headers['x-company-id'];
+    const userId = req.headers['x-user-id'];
+    
+    if (companyId && userId) {
+      console.log(`[AUTH] Processing internal server request with company_id: ${companyId}, user_id: ${userId}`);
+      
+      // Set user data on the request object for internal requests
+      (req as any).user = {
+        id: userId,
+        email: 'internal@glassops.io', // Placeholder for internal requests
+        company_id: companyId,
+        role: 'agent' // Special role for agent operations
+      };
+      
+      return next();
+    }
+  }
+
   try {
+    // Standard authentication for normal client requests
     // Get auth token from cookies or Authorization header
     const authHeader = req.headers.authorization;
     const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN format

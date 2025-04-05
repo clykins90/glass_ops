@@ -23,6 +23,7 @@ import Technicians from './pages/Technicians';
 import TechnicianDetails from './pages/TechnicianDetails';
 import AddTechnician from './pages/AddTechnician';
 import EditTechnician from './pages/EditTechnician';
+import TechnicianSchedule from './pages/admin/TechnicianSchedule';
 import Schedule from './pages/Schedule';
 import NotFound from './pages/NotFound';
 import LoginPage from './pages/LoginPage';
@@ -30,6 +31,7 @@ import SignUpPage from './pages/SignUpPage';
 import UserManagement from './pages/UserManagement';
 import ProfilePage from './pages/ProfilePage';
 import SelectCompanyPage from './pages/SelectCompanyPage';
+import AgentChat from './pages/AgentChat';
 
 // Context
 import { AppProvider } from './context/AppContext';
@@ -100,8 +102,10 @@ function App() {
                         <Route path="technicians/add" element={<AddTechnician />} />
                         <Route path="technicians/:id" element={<TechnicianDetails />} />
                         <Route path="technicians/:id/edit" element={<EditTechnician />} />
+                        <Route path="technicians/:id/schedule" element={<TechnicianSchedule />} />
                         <Route path="user-management" element={<UserManagement />} />
                         <Route path="profile" element={<ProfilePage />} />
+                        <Route path="agent" element={<AgentChat />} />
                         <Route path="*" element={<NotFound />} />
                       </Route>
                     </Routes>

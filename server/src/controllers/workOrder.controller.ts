@@ -13,14 +13,30 @@ export const getAllWorkOrders = async (req: Request, res: Response) => {
         *,
         customer:customerId(id, firstName, lastName),
         vehicle:vehicleId(id, make, model, year), 
-        technician:profiles!work_orders_assigned_technician_id_fkey(id, full_name)
+        technician:technicianId(id, firstName, lastName)
       `)
       .match({ company_id: (req as any).user.company_id })
       .order('createdAt', { ascending: false });
 
     if (error) throw error;
 
-    res.json(workOrders);
+    // Transform the response to match client expectations
+    const transformedWorkOrders = workOrders.map(order => {
+      // Map assigned_technician_id to technicianId for the client
+      const { technicianId, ...rest } = order;
+      return {
+        ...rest,
+        technicianId: technicianId,
+        // Reshape technician data if present
+        technician: order.technician ? {
+          id: order.technician.id,
+          firstName: order.technician.firstName || '',
+          lastName: order.technician.lastName || '',
+        } : undefined
+      };
+    });
+
+    res.json(transformedWorkOrders);
   } catch (error: any) {
     console.error('Error fetching work orders:', error);
     res.status(500).json({
@@ -37,33 +53,41 @@ export const getAllWorkOrders = async (req: Request, res: Response) => {
 export const getWorkOrderById = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+    
+    // Get work order with customer, vehicle, and technician details
     const { data: workOrder, error } = await supabase
       .from('work_orders')
       .select(`
         *,
-        customer:customerId(id, firstName, lastName),
-        vehicle:vehicleId(id, make, model, year), 
-        technician:profiles!work_orders_assigned_technician_id_fkey(id, full_name)
+        customer:customerId(*),
+        vehicle:vehicleId(*),
+        technician:technicianId(id, firstName, lastName)
       `)
-      .match({ id: id, company_id: (req as any).user.company_id })
+      .eq('id', id)
       .single();
 
-    if (error) {
-      if (error.code === 'PGRST116') {
-        return res.status(404).json({
-          error: 'Work order not found'
-        });
-      }
-      throw error;
+    if (error) throw error;
+    
+    if (!workOrder) {
+      return res.status(404).json({ message: 'Work order not found' });
     }
 
-    res.json(workOrder);
-  } catch (error: any) {
-    console.error('Error fetching work order:', error);
-    res.status(500).json({
-      error: 'Failed to fetch work order',
-      details: error.message
+    // Map technicianId for client consistency
+    const { technicianId, ...rest } = workOrder;
+    
+    return res.status(200).json({
+      ...rest,
+      technicianId: technicianId,
+      // If there's a technician, include their details
+      technician: workOrder.technician ? {
+        id: workOrder.technician.id,
+        firstName: workOrder.technician.firstName || '',
+        lastName: workOrder.technician.lastName || '',
+      } : undefined
     });
+  } catch (error) {
+    console.error('Error retrieving work order:', error);
+    return res.status(500).json({ message: 'Failed to retrieve work order' });
   }
 };
 
@@ -74,85 +98,62 @@ export const getWorkOrderById = async (req: Request, res: Response) => {
 export const createWorkOrder = async (req: Request, res: Response) => {
   try {
     const workOrderData = req.body;
-
-    // Check if customer exists and belongs to the company
-    const { data: customer, error: customerError } = await supabase
-      .from('customers')
-      .select('id')
-      .match({ id: workOrderData.customerId, company_id: (req as any).user.company_id })
-      .single();
-
-    if (customerError || !customer) {
-      console.error('Error checking customer for work order creation:', customerError);
-      return res.status(404).json({ error: 'Customer not found or access denied' });
-    }
-
-    // Check if vehicle exists (if provided) and belongs to the company
-    if (workOrderData.vehicleId) {
-      const { data: vehicle, error: vehicleError } = await supabase
-        .from('vehicles')
-        .select('id')
-        .match({ id: workOrderData.vehicleId, company_id: (req as any).user.company_id })
-        .single();
-
-      if (vehicleError || !vehicle) {
-        console.error('Error checking vehicle for work order creation:', vehicleError);
-        return res.status(404).json({ error: 'Vehicle not found or access denied' });
-      }
-    }
-
-    // Check if technician exists (if provided) and belongs to the company
-    if (workOrderData.assigned_technician_id) {
-      const { data: technicianProfile, error: techError } = await supabase
+    const companyId = (req as any).user.company_id;
+    
+    // Map technicianId for database compatibility
+    const technicianId = workOrderData.technicianId;
+    
+    // Validate technician exists and belongs to company if provided
+    if (technicianId) {
+      const { data: technicianCheck, error: technicianError } = await supabase
         .from('profiles')
         .select('id')
-        .match({
-          id: workOrderData.assigned_technician_id,
-          role: 'technician',
-          company_id: (req as any).user.company_id
-        })
+        .eq('id', technicianId)
+        .eq('company_id', companyId)
         .single();
-
-      if (techError || !technicianProfile) {
-        console.error('Error checking technician for work order creation:', techError);
-        return res.status(404).json({ error: 'Technician profile not found or invalid role/company' });
+      
+      if (technicianError || !technicianCheck) {
+        return res.status(400).json({ message: 'Invalid technician ID' });
       }
     }
-
-    // Prepare data for insertion, ensuring date fields are null if empty
-    const dataToInsert = { 
-      ...workOrderData, 
-      company_id: (req as any).user.company_id 
-    };
-
-    if (dataToInsert.scheduledDate === '') {
-      dataToInsert.scheduledDate = null;
-    }
-    if (dataToInsert.completedDate === '') {
-        dataToInsert.completedDate = null;
-    }
-
-    // Create work order
-    const { data: newWorkOrder, error } = await supabase
+    
+    // Remove technicianId and add technicianId with proper field name
+    const { technicianId: _, ...workOrderDataWithoutTechnicianId } = workOrderData;
+    
+    const { data, error } = await supabase
       .from('work_orders')
-      .insert([dataToInsert]) // Use the prepared data
+      .insert([
+        { 
+          ...workOrderDataWithoutTechnicianId,
+          technicianId,
+          company_id: companyId 
+        }
+      ])
       .select(`
         *,
-        customer:customerId (*),
-        vehicle:vehicleId (*),
-        technician:assigned_technician_id (*)
+        customer:customerId(*),
+        vehicle:vehicleId(*),
+        technician:technicianId(id, firstName, lastName)
       `)
       .single();
-
+    
     if (error) throw error;
-
-    res.status(201).json(newWorkOrder);
-  } catch (error: any) {
-    console.error('Error creating work order:', error);
-    res.status(500).json({
-      error: 'Failed to create work order',
-      details: error.message
+    
+    const { technicianId: tech_id, ...rest } = data;
+    
+    return res.status(201).json({
+      ...rest,
+      technicianId: tech_id,
+      // If there's a technician, include their details
+      technician: data.technician ? {
+        id: data.technician.id,
+        firstName: data.technician.firstName || '',
+        lastName: data.technician.lastName || '',
+      } : undefined
     });
+  } catch (error) {
+    console.error('Error creating work order:', error);
+    return res.status(500).json({ message: 'Failed to create work order' });
   }
 };
 
@@ -198,33 +199,41 @@ export const updateWorkOrder = async (req: Request, res: Response) => {
         .match({ id: workOrderData.vehicleId, company_id: (req as any).user.company_id })
         .single();
 
-      if (vehicleError || !vehicle) {
+      if (vehicleError && workOrderData.vehicleId !== null) {
         console.error('Error checking vehicle for work order update:', vehicleError);
         return res.status(404).json({ error: 'Vehicle not found or access denied' });
       }
     }
 
-    if (workOrderData.assigned_technician_id !== undefined) {
-      if (workOrderData.assigned_technician_id !== null) {
-        const { data: technicianProfile, error: techError } = await supabase
-          .from('profiles')
-          .select('id')
-          .match({
-            id: workOrderData.assigned_technician_id,
-            role: 'technician',
-            company_id: (req as any).user.company_id
-          })
-          .single();
+    // Map technicianId to assigned_technician_id for database compatibility
+    const assigned_technician_id = workOrderData.technicianId;
+    
+    // Check technician exists if provided
+    if (assigned_technician_id) {
+      const { data: technicianProfile, error: techError } = await supabase
+        .from('profiles')
+        .select('id')
+        .match({
+          id: assigned_technician_id,
+          role: 'technician',
+          company_id: (req as any).user.company_id
+        })
+        .single();
 
-        if (techError || !technicianProfile) {
-          console.error('Error checking technician for work order update:', techError);
-          return res.status(404).json({ error: 'Technician profile not found or invalid role/company' });
-        }
+      if (techError || !technicianProfile) {
+        console.error('Error checking technician for work order update:', techError);
+        return res.status(404).json({ error: 'Technician profile not found or invalid role/company' });
       }
     }
 
-    // Prepare data for update, ensuring date fields are null if empty
-    const dataToUpdate = { ...workOrderData };
+    // Prepare data for update, convert empty string dates to null
+    // Remove technicianId and add assigned_technician_id
+    const { technicianId, ...restData } = workOrderData;
+    const dataToUpdate = { 
+      ...restData,
+      assigned_technician_id
+    };
+    
     if (dataToUpdate.scheduledDate === '') {
       dataToUpdate.scheduledDate = null;
     }
@@ -235,14 +244,32 @@ export const updateWorkOrder = async (req: Request, res: Response) => {
     // Update work order
     const { data: updatedWorkOrder, error } = await supabase
       .from('work_orders')
-      .update(dataToUpdate) // Use the prepared data
+      .update(dataToUpdate)
       .match({ id: id, company_id: (req as any).user.company_id })
-      .select('*, customer:customerId (*), vehicle:vehicleId (*), technician:assigned_technician_id (*)')
+      .select(`
+        *,
+        customer:customerId (*),
+        vehicle:vehicleId (*),
+        technician:assigned_technician_id (*)
+      `)
       .single();
 
     if (error) throw error;
 
-    res.json(updatedWorkOrder);
+    // Transform the response to match client expectations
+    const { assigned_technician_id: tech_id, ...rest } = updatedWorkOrder;
+    const transformedWorkOrder = {
+      ...rest,
+      technicianId: tech_id,
+      // Reshape technician data if present
+      technician: updatedWorkOrder.technician ? {
+        id: updatedWorkOrder.technician.id,
+        firstName: updatedWorkOrder.technician.full_name?.split(' ')[0] || '',
+        lastName: updatedWorkOrder.technician.full_name?.split(' ')[1] || '',
+      } : undefined
+    };
+
+    res.json(transformedWorkOrder);
   } catch (error: any) {
     console.error('Error updating work order:', error);
     res.status(500).json({
@@ -374,7 +401,7 @@ export const assignTechnician = async (req: Request, res: Response) => {
 
     // 2. Determine the value for assigned_technician_id
     // Use assigned_technician_id consistently, default to null if technicianId is null or undefined
-    const assignedTechnicianId = technicianId === null || technicianId === undefined ? null : Number(technicianId);
+    const assignedTechnicianId = technicianId === null || technicianId === undefined ? null : technicianId;
 
     // 3. If assigning (not null), validate the technician profile
     if (assignedTechnicianId !== null) {

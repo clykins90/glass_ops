@@ -230,14 +230,30 @@ export const getCustomerWorkOrders = async (req: Request, res: Response) => {
       .select(`
         *,
         vehicle:vehicleId (*),
-        technician:technicianId (*)
+        technician:assigned_technician_id (*)
       `)
       .match({ customerId: id, company_id: companyId })
       .order('createdAt', { ascending: false });
 
     if (error) throw error;
 
-    res.json(workOrders);
+    // Transform the response to match client expectations
+    const transformedWorkOrders = workOrders.map(order => {
+      // Map assigned_technician_id to technicianId for the client
+      const { assigned_technician_id, ...rest } = order;
+      return {
+        ...rest,
+        technicianId: assigned_technician_id,
+        // Reshape technician data if present
+        technician: order.technician ? {
+          id: order.technician.id,
+          firstName: order.technician.full_name?.split(' ')[0] || '',
+          lastName: order.technician.full_name?.split(' ')[1] || '',
+        } : undefined
+      };
+    });
+
+    res.json(transformedWorkOrders);
   } catch (error: any) {
     console.error('Error fetching customer work orders:', error);
     res.status(500).json({

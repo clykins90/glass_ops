@@ -1,5 +1,5 @@
 import { workOrderApi } from './api';
-import { WorkOrder } from '../types';
+import { WorkOrder } from '../types/workOrder';
 
 export const getWorkOrders = async (): Promise<WorkOrder[]> => {
   return workOrderApi.getAll() as Promise<WorkOrder[]>;
@@ -38,5 +38,5 @@ export const getWorkOrdersByDate = async (date: Date): Promise<WorkOrder[]> => {
 
 export const getWorkOrdersByTechnician = async (technicianId: number): Promise<WorkOrder[]> => {
   const workOrders = await workOrderApi.getAll() as WorkOrder[];
-  return workOrders.filter(wo => wo.technicianId === technicianId);
+  return workOrders.filter(wo => Number(wo.technicianId) === technicianId);
 }; 

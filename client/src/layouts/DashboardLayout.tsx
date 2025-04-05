@@ -53,6 +53,7 @@ const DashboardLayout = () => {
     { path: '/work-orders', label: 'Work Orders' },
     { path: '/schedule', label: 'Schedule' },
     { path: '/technicians', label: 'Technicians' },
+    { path: '/agent', label: 'AI Assistant' },
     // Only show user management for admins - allow based on profile role
     ...(isAdmin ? [{ path: '/user-management', label: 'User Management' }] : [])
   ];
@@ -70,30 +71,32 @@ const DashboardLayout = () => {
     <div className="min-h-screen bg-background">
       {/* Header: Use bg-card, border-b, text-foreground */}
       <header className="bg-card border-b border-border shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex h-16 items-center">
-            <div className="flex">
-              <div className="flex-shrink-0 flex items-center">
-                <h1 className="text-xl font-bold text-foreground">GlassOps</h1>
-              </div>
-            </div>
-            {user && !authLoading && (
-              <div className="ml-auto flex items-center gap-2 text-sm">
-                {/* Use text-muted-foreground */}
+        <div className="flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center">
+            <h1 className="text-xl font-bold text-foreground">GlassOps</h1>
+          </div>
+          <div className="flex items-center gap-2 text-sm">
+            {authLoading ? (
+              <>
+                <div className="animate-pulse h-4 w-24 bg-muted rounded"></div>
+                <div className="animate-pulse h-8 w-16 bg-muted rounded"></div>
+                <div className="animate-pulse h-8 w-16 bg-muted rounded"></div>
+                <div className="animate-pulse h-8 w-10 bg-muted rounded"></div>
+              </>
+            ) : user ? (
+              <>
                 <div className="text-muted-foreground">
                   Logged in as: {user.email} {profile?.role ? `(${profile.role})` : user.role && `(${user.role})`}
                 </div>
-                {/* Use text-primary for link */}
-                <Link 
-                  to="/profile" 
+                <Link
+                  to="/profile"
                   className="flex items-center gap-1 text-primary hover:text-primary/80"
                   title="View/Edit Profile"
                 >
                   <UserCircle size={18} />
                   <span className="hidden md:inline">Profile</span>
                 </Link>
-                {/* Use Button variant and theme text */}
-                <Button 
+                <Button
                    variant="ghost"
                    size="sm"
                    className="flex items-center gap-1 text-muted-foreground hover:text-foreground"
@@ -105,16 +108,8 @@ const DashboardLayout = () => {
                    <span className="hidden md:inline">Logout</span>
                  </Button>
                  <ThemeToggle />
-              </div>
-            )}
-            {authLoading && (
-              <div className="ml-auto flex items-center gap-2 text-sm">
-                <div className="animate-pulse h-4 w-24 bg-muted rounded"></div>
-                <div className="animate-pulse h-8 w-16 bg-muted rounded"></div>
-                <div className="animate-pulse h-8 w-16 bg-muted rounded"></div>
-                <div className="animate-pulse h-8 w-10 bg-muted rounded"></div>
-              </div>
-            )}
+              </>
+            ) : null}
           </div>
         </div>
       </header>

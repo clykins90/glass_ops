@@ -1,4 +1,3 @@
-import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { technicianApi, workOrderApi } from '../services/api';
@@ -7,6 +6,8 @@ import { WorkOrder } from '../types/workOrder';
 import ConfirmationDialog from '../components/ConfirmationDialog';
 import { Button } from '@/components/ui/button';
 import { useTechnicianProfiles } from '../context/TechnicianContext';
+import { Calendar } from 'lucide-react';
+import React, { useState } from 'react';
 
 const TechnicianDetails = () => {
   const { id } = useParams<{ id: string }>();
@@ -35,7 +36,7 @@ const TechnicianDetails = () => {
     queryFn: async () => {
       if (!id) return [];
       const allWorkOrders = await workOrderApi.getAll();
-      return allWorkOrders.filter(order => order.assigned_technician_id === id);
+      return allWorkOrders.filter(order => order.technicianId === id);
     },
     enabled: !!id,
   });
@@ -98,6 +99,13 @@ const TechnicianDetails = () => {
           </div>
         </div>
         <div className="mt-4 flex md:mt-0 md:ml-4 space-x-3">
+          <Button 
+            variant="outline"
+            onClick={() => navigate(`/technicians/${id}/schedule`)}
+          >
+            <Calendar className="h-4 w-4 mr-2" />
+            Manage Schedule
+          </Button>
           <Button 
             variant="outline"
             onClick={() => navigate(`/technicians/${id}/edit`)}

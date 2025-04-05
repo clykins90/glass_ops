@@ -4,6 +4,8 @@ import vehicleRoutes from './vehicle.routes';
 import workOrderRoutes from './workOrder.routes';
 import technicianRoutes from './technician.routes';
 import dashboardRoutes from './dashboard.routes';
+import agentRoutes from './agentRoutes';
+import scheduleRoutes from './schedule.routes';
 import { authMiddleware } from '../middleware/auth';
 
 const router = express.Router();
@@ -26,5 +28,7 @@ router.use('/vehicles', vehicleRoutes);
 router.use('/workorders', workOrderRoutes);
 router.use('/technicians', technicianRoutes);
 router.use('/dashboard', dashboardRoutes);
+router.use('/agent', agentRoutes);
+router.use('/', scheduleRoutes); // Schedule routes have their own path prefixes
 
 export default router; 

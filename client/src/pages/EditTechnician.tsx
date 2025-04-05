@@ -91,7 +91,7 @@ const EditTechnician = () => {
         <CardHeader>
           <CardTitle className="text-2xl">Edit Technician Profile</CardTitle>
           <CardDescription>
-            Editing {profile.firstName} {profile.lastName}
+            Editing {profile.full_name}
           </CardDescription>
         </CardHeader>
         <CardContent>

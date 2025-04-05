@@ -16,9 +16,9 @@ export interface WorkOrder {
     year: number;
     color?: string;
   };
-  technicianId?: number;
+  technicianId?: string;
   technician?: {
-    id: number;
+    id: string;
     firstName: string;
     lastName: string;
   };
@@ -38,4 +38,5 @@ export interface WorkOrder {
   notes?: string;
   createdAt?: string | Date;
   updatedAt?: string | Date;
+  estimated_duration_minutes?: number;
 } 

@@ -24,6 +24,7 @@ import {
   TableHeader,
   TableRow,
 } from '../components/ui/table';
+import { Badge } from '../components/ui/badge';
 
 const ProfilePage = () => {
   const { user } = useAuth();
@@ -80,8 +81,21 @@ const ProfilePage = () => {
     updateMutation.mutate(formData);
   };
   
-  // Get user role permissions
-  const userRolePermissions = profile?.role ? rolePermissions[profile.role] || [] : [];
+  // Get user role permissions - ensure lowercase lookup
+  const userRole = profile?.role?.toLowerCase();
+  const userRolePermissions = userRole ? rolePermissions[userRole] || [] : [];
+
+  // Group permissions by resource
+  const permissionsByResource = userRolePermissions.reduce((acc, permission) => {
+    const { resource, action } = permission;
+    if (!acc[resource]) {
+      acc[resource] = [];
+    }
+    acc[resource].push(action);
+    // Sort actions alphabetically for consistency
+    acc[resource].sort(); 
+    return acc;
+  }, {} as Record<string, string[]>);
 
   if (isLoading) {
     return <div className="p-8 text-center">Loading profile...</div>;
@@ -94,7 +108,7 @@ const ProfilePage = () => {
   return (
     <div className="p-4 md:p-8">
       <div className="mb-6">
-        <h2 className="text-2xl font-bold leading-7 text-gray-900 sm:truncate sm:text-3xl sm:tracking-tight">
+        <h2 className="text-2xl font-bold leading-7 text-foreground sm:truncate sm:text-3xl sm:tracking-tight">
           Your Profile
         </h2>
       </div>
@@ -108,8 +122,8 @@ const ProfilePage = () => {
         <TabsContent value="profile">
           <Card>
             <CardHeader>
-              <CardTitle>Profile Information</CardTitle>
-              <CardDescription>
+              <CardTitle className="text-foreground">Profile Information</CardTitle>
+              <CardDescription className="text-muted-foreground">
                 Update your personal information.
               </CardDescription>
             </CardHeader>
@@ -178,39 +192,33 @@ const ProfilePage = () => {
         <TabsContent value="permissions">
           <Card>
             <CardHeader>
-              <CardTitle>Your Permissions</CardTitle>
-              <CardDescription>
+              <CardTitle className="text-foreground">Your Permissions</CardTitle>
+              <CardDescription className="text-muted-foreground">
                 These are the permissions assigned to your role ({profile?.role}).
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="overflow-auto ring-1 ring-black ring-opacity-5 dark:ring-gray-700 rounded-lg">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Resource</TableHead>
-                      <TableHead>Action</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {userRolePermissions.length > 0 ? (
-                      userRolePermissions.map((permission, index) => (
-                        <TableRow key={index}>
-                          <TableCell className="capitalize">{permission.resource}</TableCell>
-                          <TableCell className="capitalize">{permission.action}</TableCell>
-                        </TableRow>
-                      ))
-                    ) : (
-                      <TableRow>
-                        <TableCell colSpan={2} className="text-center text-muted-foreground dark:text-gray-500">
-                          No permissions found for your role.
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
-              <div className="mt-4 text-sm text-gray-500 dark:text-gray-400">
+              {Object.keys(permissionsByResource).length > 0 ? (
+                <div className="space-y-4">
+                  {Object.entries(permissionsByResource).map(([resource, actions]) => (
+                    <div key={resource} className="p-3 border rounded-md bg-muted/50 dark:bg-muted/20">
+                      <h3 className="text-md font-semibold capitalize mb-2 text-foreground">{resource}</h3>
+                      <div className="flex flex-wrap gap-2">
+                        {actions.map((action) => (
+                          <Badge key={action} variant="secondary" className="capitalize">
+                            {action}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center text-muted-foreground">
+                  No permissions found for your role.
+                </div>
+              )}
+              <div className="mt-4 text-sm text-muted-foreground">
                 <p>If you believe you need additional permissions, please contact your system administrator.</p>
               </div>
             </CardContent>
